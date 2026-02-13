@@ -100,70 +100,6 @@ const allDestinations = [
   { id: '30', name: 'Vidhana Soudha', address: 'State Legislature, Dr. Ambedkar Road', rides: 89, category: 'tourist', rating: 4.6 },
 ];
 
-// Sample rides for each destination
-const sampleRides = [
-  {
-    id: 'ride1',
-    status: 'pending',
-    pickup_address: 'Koramangala 4th Block, Bangalore',
-    dropoff_address: 'Bangalore Airport Terminal 1',
-    ride_date: '2026-02-15',
-    ride_time: '6:30 AM',
-    cab_type: 'sedan',
-    available_seats: 3,
-    user: {
-      name: 'Rahul Sharma',
-      rating: 4.8,
-      verified: true
-    }
-  },
-  {
-    id: 'ride2',
-    status: 'active',
-    pickup_address: 'Indiranagar 100ft Road',
-    dropoff_address: 'Electronic City Phase 1',
-    ride_date: '2026-02-15',
-    ride_time: '8:00 AM',
-    cab_type: 'suv',
-    available_seats: 4,
-    user: {
-      name: 'Priya Patel',
-      rating: 4.9,
-      verified: true
-    }
-  },
-  {
-    id: 'ride3',
-    status: 'pending',
-    pickup_address: 'MG Road Metro Station',
-    dropoff_address: 'Whitefield IT Hub',
-    ride_date: '2026-02-16',
-    ride_time: '9:00 AM',
-    cab_type: 'sedan',
-    available_seats: 2,
-    user: {
-      name: 'Amit Kumar',
-      rating: 4.5,
-      verified: true
-    }
-  },
-  {
-    id: 'ride4',
-    status: 'active',
-    pickup_address: 'HSR Layout Sector 1',
-    dropoff_address: 'Marathahalli Bridge',
-    ride_date: '2026-02-16',
-    ride_time: '7:30 AM',
-    cab_type: 'hatchback',
-    available_seats: 1,
-    user: {
-      name: 'Sneha Gupta',
-      rating: 4.7,
-      verified: true
-    }
-  },
-];
-
 export default function DestinationScreen() {
   const router = useRouter();
   const { category } = useLocalSearchParams();
@@ -379,18 +315,6 @@ export default function DestinationScreen() {
             contentContainerStyle={styles.destinationsList}
             ItemSeparatorComponent={() => <View style={styles.separator} />}
           />
-        </View>
-
-        {/* Available Rides */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Available Rides to {categoryData.label}</Text>
-          <View style={styles.ridesList}>
-            {sampleRides.map((ride) => (
-              <View key={ride.id}>
-                {renderRide({ item: ride })}
-              </View>
-            ))}
-          </View>
         </View>
 
         {/* Bottom Spacing */}

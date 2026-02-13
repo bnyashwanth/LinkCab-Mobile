@@ -1,8 +1,9 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { PaymentContextType, Wallet, Transaction } from '@/types';
-import { useAuth } from './AuthContext';
 import { supabase } from '@/lib/supabase';
+import { useAuth } from './AuthContext';
+import { AuthContextType, PaymentContextType, Wallet, Transaction } from '@/types';
 import * as Sentry from '@sentry/react-native';
+import { getValidRideId } from '@/utils/rideIdUtils';
 
 const PaymentContext = createContext<PaymentContextType | undefined>(undefined);
 
@@ -88,13 +89,16 @@ export const PaymentProvider: React.FC<PaymentProviderProps> = ({ children }) =>
     if (!user) return { error: new Error('User not authenticated') };
 
     try {
+      // Convert ride ID to valid UUID or null
+      const validRideId = getValidRideId(rideId);
+
       const { data, error } = await supabase
         .from('transactions')
         .insert({
           user_id: user.id,
           type,
           amount,
-          ride_id: rideId,
+          ride_id: validRideId, // Use validated ride ID
           description,
           status: 'completed',
         })

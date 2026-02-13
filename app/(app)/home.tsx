@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -13,6 +13,7 @@ import {
   RefreshControl,
   Image,
   Platform,
+  Animated,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -20,42 +21,8 @@ import { colors } from '../../constants/theme';
 import { useAuth } from '../../contexts/AuthContext';
 import { usePayment } from '../../contexts/PaymentContext';
 import { useRide } from '../../contexts/RideContext';
+import { useNotifications } from '../../contexts/NotificationContext';
 import LinkCabLogo from '../../components/LinkCabLogo';
-
-const DEMO_RIDES = [
-  {
-    id: 'demo1',
-    status: 'pending',
-    pickup_address: 'Koramangala 4th Block, Bangalore',
-    dropoff_address: 'Bangalore Airport Terminal 1',
-    ride_date: '2026-02-15',
-    ride_time: '6:30 AM',
-    cab_type: 'sedan',
-    available_seats: 2,
-    created_at: new Date().toISOString(),
-    user: {
-      name: 'Rahul Sharma',
-      rating: 4.8,
-      verified: true
-    }
-  },
-  {
-    id: 'demo2',
-    status: 'active',
-    pickup_address: 'Indiranagar 100ft Road',
-    dropoff_address: 'Electronic City Phase 1',
-    ride_date: '2026-02-15',
-    ride_time: '8:00 AM',
-    cab_type: 'suv',
-    available_seats: 4,
-    created_at: new Date().toISOString(),
-    user: {
-      name: 'Priya Patel',
-      rating: 4.9,
-      verified: true
-    }
-  }
-];
 
 const categories = [
   { id: 'all', label: 'All', icon: 'grid-outline' },
@@ -74,15 +41,76 @@ const quickActions = [
 
 export default function HomeScreen() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const { wallet } = usePayment();
-  const { rides: contextRides, loading } = useRide();
+  const { allRides, fetchAllRides } = useRide();
+  const contextRides = allRides;
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [refreshing, setRefreshing] = useState(false);
 
+  // Animation values
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(50)).current;
+  const scaleAnim = useRef(new Animated.Value(0.8)).current;
+  const headerFadeAnim = useRef(new Animated.Value(0)).current;
+  const quickActionsAnim = useRef(new Animated.Value(0)).current;
+
+  // Entrance animations
+  useEffect(() => {
+    const startAnimations = () => {
+      // Header animation
+      Animated.timing(headerFadeAnim, {
+        toValue: 1,
+        duration: 800,
+        delay: 100,
+        useNativeDriver: true,
+      }).start();
+
+      // Greeting section
+      Animated.parallel([
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 1000,
+          delay: 300,
+          useNativeDriver: true,
+        }),
+        Animated.timing(slideAnim, {
+          toValue: 0,
+          duration: 800,
+          delay: 300,
+          useNativeDriver: true,
+        }),
+      ]).start();
+
+      // Search bar scale animation
+      Animated.timing(scaleAnim, {
+        toValue: 1,
+        duration: 600,
+        delay: 500,
+        useNativeDriver: true,
+      }).start();
+
+      // Quick actions stagger animation
+      quickActions.map((_, index) => {
+        const anim = new Animated.Value(0);
+        Animated.timing(anim, {
+          toValue: 1,
+          duration: 500,
+          delay: 700 + (index * 100),
+          useNativeDriver: true,
+        }).start();
+        return anim;
+      });
+    };
+
+    startAnimations();
+    if (user) fetchAllRides();
+  }, []);
+
   const onRefresh = async () => {
     setRefreshing(true);
+    await fetchAllRides();
     setRefreshing(false);
   };
 
@@ -193,33 +221,39 @@ export default function HomeScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor={colors.background.primary} />
-      
+
       {/* Header with Logo */}
-      <View style={styles.header}>
+      <Animated.View style={[styles.header, { opacity: headerFadeAnim }]}>
         <View style={styles.headerLeft}>
           <LinkCabLogo size="small" style={styles.logoComponent} />
         </View>
         <View style={styles.headerRight}>
           <TouchableOpacity style={styles.headerIcon}>
             <Ionicons name="notifications-outline" size={20} color={colors.text.primary} />
-            <View style={styles.notificationBadge}>
-              <Text style={styles.badgeText}>3</Text>
-            </View>
           </TouchableOpacity>
           <View style={styles.walletContainer}>
             <Ionicons name="wallet-outline" size={20} color={colors.text.primary} />
             <Text style={styles.walletText}>₹{wallet?.balance || 0}</Text>
           </View>
         </View>
-      </View>
+      </Animated.View>
 
       {/* Greeting Section */}
-      <View style={styles.greetingSection}>
-        <Text style={styles.title}>Welcome back!</Text>
+      <Animated.View style={[
+        styles.greetingSection,
+        {
+          opacity: fadeAnim,
+          transform: [{ translateY: slideAnim }]
+        }
+      ]}>
+        <Text style={styles.title}>Welcome back, {profile?.full_name || user?.user_metadata?.name || user?.email?.split('@')[0] || 'User'}!</Text>
         <Text style={styles.subtitle}>Find your perfect ride</Text>
-      </View>
+      </Animated.View>
 
-      <View style={styles.searchSection}>
+      <Animated.View style={[
+        styles.searchSection,
+        { transform: [{ scale: scaleAnim }] }
+      ]}>
         <View style={styles.searchBar}>
           <Ionicons name="search" size={20} color={colors.gray[500]} />
           <TextInput
@@ -235,7 +269,7 @@ export default function HomeScreen() {
             </TouchableOpacity>
           )}
         </View>
-      </View>
+      </Animated.View>
 
       <ScrollView
         style={styles.content}
@@ -244,23 +278,58 @@ export default function HomeScreen() {
         }
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.quickActions}>
-          {quickActions.map((action) => (
-            <TouchableOpacity
-              key={action.id}
-              style={styles.quickAction}
-              onPress={() => router.push(action.route)}
-            >
-              <Ionicons name={action.icon as any} size={24} color={colors.secondary[500]} />
-              <Text style={styles.quickActionText}>{action.label}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+        <Animated.View style={styles.quickActions}>
+          {quickActions.map((action, index) => {
+            const animValue = useRef(new Animated.Value(0)).current;
 
-        <View style={styles.section}>
+            useEffect(() => {
+              Animated.timing(animValue, {
+                toValue: 1,
+                duration: 500,
+                delay: 700 + (index * 100),
+                useNativeDriver: true,
+              }).start();
+            }, []);
+
+            return (
+              <Animated.View
+                key={action.id}
+                style={[
+                  styles.quickAction,
+                  {
+                    opacity: animValue,
+                    transform: [{
+                      translateY: animValue.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [30, 0],
+                      })
+                    }]
+                  }
+                ]}
+              >
+                <TouchableOpacity
+                  onPress={() => router.push(action.route)}
+                  activeOpacity={0.8}
+                  style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}
+                >
+                  <Ionicons name={action.icon as any} size={24} color={colors.secondary[500]} />
+                  <Text style={styles.quickActionText}>{action.label}</Text>
+                </TouchableOpacity>
+              </Animated.View>
+            );
+          })}
+        </Animated.View>
+
+        <Animated.View style={[
+          styles.section,
+          {
+            opacity: fadeAnim,
+            transform: [{ translateY: slideAnim }]
+          }
+        ]}>
           <Text style={styles.sectionTitle}>Available Rides</Text>
           <FlatList
-            data={DEMO_RIDES}
+            data={contextRides}
             renderItem={renderRide}
             keyExtractor={(item) => item.id}
             scrollEnabled={false}
@@ -273,7 +342,7 @@ export default function HomeScreen() {
               </View>
             }
           />
-        </View>
+        </Animated.View>
       </ScrollView>
     </SafeAreaView>
   );

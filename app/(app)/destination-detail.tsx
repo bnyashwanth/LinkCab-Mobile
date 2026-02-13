@@ -65,70 +65,6 @@ const allDestinations = [
   { id: '30', name: 'Vidhana Soudha', address: 'State Legislature, Dr. Ambedkar Road', rides: 89, category: 'tourist', rating: 4.6 },
 ];
 
-// Sample rides for this specific destination
-const getDestinationRides = (destinationId: string) => [
-  {
-    id: `ride_${destinationId}_1`,
-    status: 'pending',
-    pickup_address: 'Koramangala 4th Block, Bangalore',
-    dropoff_address: allDestinations.find(d => d.id === destinationId)?.name || 'Destination',
-    ride_date: '2026-02-15',
-    ride_time: '6:30 AM',
-    cab_type: 'sedan',
-    available_seats: 3,
-    user: {
-      name: 'Rahul Sharma',
-      rating: 4.8,
-      verified: true
-    }
-  },
-  {
-    id: `ride_${destinationId}_2`,
-    status: 'active',
-    pickup_address: 'Indiranagar 100ft Road',
-    dropoff_address: allDestinations.find(d => d.id === destinationId)?.name || 'Destination',
-    ride_date: '2026-02-15',
-    ride_time: '8:00 AM',
-    cab_type: 'suv',
-    available_seats: 4,
-    user: {
-      name: 'Priya Patel',
-      rating: 4.9,
-      verified: true
-    }
-  },
-  {
-    id: `ride_${destinationId}_3`,
-    status: 'pending',
-    pickup_address: 'MG Road Metro Station',
-    dropoff_address: allDestinations.find(d => d.id === destinationId)?.name || 'Destination',
-    ride_date: '2026-02-16',
-    ride_time: '9:00 AM',
-    cab_type: 'sedan',
-    available_seats: 2,
-    user: {
-      name: 'Amit Kumar',
-      rating: 4.5,
-      verified: true
-    }
-  },
-  {
-    id: `ride_${destinationId}_4`,
-    status: 'active',
-    pickup_address: 'HSR Layout Sector 1',
-    dropoff_address: allDestinations.find(d => d.id === destinationId)?.name || 'Destination',
-    ride_date: '2026-02-16',
-    ride_time: '7:30 AM',
-    cab_type: 'hatchback',
-    available_seats: 1,
-    user: {
-      name: 'Sneha Gupta',
-      rating: 4.7,
-      verified: true
-    }
-  },
-];
-
 export default function DestinationDetailScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams();
@@ -144,7 +80,8 @@ export default function DestinationDetailScreen() {
     );
   }
 
-  const destinationRides = getDestinationRides(id as string);
+  // Currently no demo/sample rides – this will be populated by real data in future
+  const destinationRides: any[] = [];
 
   const filteredRides = useMemo(() => {
     return destinationRides.filter((ride) => {

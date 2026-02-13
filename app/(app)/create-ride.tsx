@@ -185,7 +185,7 @@ export default function CreateRideScreen() {
         Alert.alert('Error', result.error.message || 'Failed to create ride');
       } else {
         Alert.alert('Success', 'Ride created successfully!', [
-          { text: 'OK', onPress: () => router.replace('/(app)/my-rides') }
+          { text: 'OK', onPress: () => router.replace('/(app)/announcements') }
         ]);
       }
     } catch (error) {

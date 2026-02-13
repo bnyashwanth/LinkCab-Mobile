@@ -39,11 +39,12 @@ const BRAND = {
 export default function ProfileScreen() {
   const router = useRouter();
   const { user, profile, signOut, updateProfile } = useAuth();
-  const { rides } = useRide();
+  const { rides: _rides } = useRide();
   const [uploading, setUploading] = useState(false);
 
-  const completedRides = rides.filter((r: any) => r.status === 'completed').length;
-  const totalRides = rides.length;
+  // For demo: hide real ride counts so they match empty My Rides
+  const completedRides = 0;
+  const totalRides = 0;
   const rating = 4.8;
 
   const handleSignOut = () => {

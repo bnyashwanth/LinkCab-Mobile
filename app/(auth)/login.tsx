@@ -27,10 +27,12 @@ export default function LoginScreen() {
   const { signIn, signInWithOAuth, user } = useAuth();
   const params = useLocalSearchParams();
 
+  const [shouldNavigate, setShouldNavigate] = useState(false);
+
   useEffect(() => {
     // Check if user is already logged in (from email verification)
     if (user) {
-      router.replace('/(app)/home');
+      setShouldNavigate(true);
     }
 
     // Check for verification messages from deep link
@@ -44,6 +46,12 @@ export default function LoginScreen() {
     }
   }, [user, router, params]);
 
+  useEffect(() => {
+    if (shouldNavigate) {
+      router.replace('/(app)/login-animation');
+    }
+  }, [shouldNavigate, router]);
+
   const handleEmailSignIn = async () => {
     if (!email || !password) {
       Alert.alert('Error', 'Please fill in all fields');
@@ -56,6 +64,9 @@ export default function LoginScreen() {
       const { error } = await signIn(email, password);
       if (error) {
         Alert.alert('Login Error', error.message);
+      } else {
+        // Login successful - trigger navigation
+        setShouldNavigate(true);
       }
     } catch (error) {
       captureException(error);
@@ -70,6 +81,9 @@ export default function LoginScreen() {
       const { error } = await signInWithOAuth(provider);
       if (error) {
         Alert.alert('Login Error', error.message);
+      } else {
+        // OAuth login successful - trigger navigation
+        setShouldNavigate(true);
       }
     } catch (error) {
       captureException(error);

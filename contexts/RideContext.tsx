@@ -21,6 +21,7 @@ interface RideProviderProps {
 export const RideProvider: React.FC<RideProviderProps> = ({ children }) => {
   const [currentRide, setCurrentRide] = useState<Ride | null>(null);
   const [rides, setRides] = useState<Ride[]>([]);
+  const [allRides, setAllRides] = useState<Ride[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
@@ -28,6 +29,7 @@ export const RideProvider: React.FC<RideProviderProps> = ({ children }) => {
   useEffect(() => {
     if (user) {
       fetchRides();
+      fetchAllRides();
       subscribeToRideUpdates();
     }
   }, [user]);
@@ -174,21 +176,73 @@ export const RideProvider: React.FC<RideProviderProps> = ({ children }) => {
     }
 
     try {
-      const { error } = await supabase
+      // First check if the ride exists and is in pending status
+      const { data: rideData, error: fetchError } = await supabase
         .from('rides')
-        .update({
-          driver_id: user.id,
-          status: 'accepted',
-        })
-        .eq('id', rideId);
+        .select('id, status, rider_id, driver_id')
+        .eq('id', rideId)
+        .single();
 
-      if (error) {
-        Sentry.captureException(error);
-        return { error };
+      if (fetchError) {
+        console.error('Fetch Error:', fetchError);
+        Sentry.captureException(fetchError);
+        return { error: fetchError };
       }
 
+      if (!rideData) {
+        return { error: new Error('Ride not found') };
+      }
+
+      if (rideData.status !== 'pending') {
+        return { error: new Error('Ride is no longer available') };
+      }
+
+      if (rideData.driver_id) {
+        return { error: new Error('Ride already has a driver') };
+      }
+
+      // Check if user exists in auth.users by trying to query their profile
+      const { data: authUser, error: authError } = await supabase.auth.getUser();
+
+      if (authError || !authUser.user) {
+        console.error('Auth Error:', authError);
+        return { error: new Error('User authentication failed') };
+      }
+
+      console.log('Attempting to update ride:', {
+        rideId,
+        driverId: authUser.user.id,
+        currentStatus: rideData.status
+      });
+
+      // Now update the ride with driver_id (directly from auth.users)
+      const { data: updateData, error: updateError } = await supabase
+        .from('rides')
+        .update({
+          driver_id: authUser.user.id,
+          status: 'accepted',
+        })
+        .eq('id', rideId)
+        .select();
+
+      if (updateError) {
+        console.error('Foreign Key Error Details:', {
+          rideId,
+          userId: authUser.user.id,
+          error: updateError,
+          errorCode: updateError.code,
+          errorDetails: updateError.details,
+          errorHint: updateError.hint,
+          message: updateError.message
+        });
+        Sentry.captureException(updateError);
+        return { error: updateError };
+      }
+
+      console.log('Ride updated successfully:', updateData);
       return { error: null };
     } catch (error) {
+      console.error('Unexpected Error:', error);
       Sentry.captureException(error);
       return { error };
     }
@@ -339,8 +393,85 @@ export const RideProvider: React.FC<RideProviderProps> = ({ children }) => {
     return () => subscription.unsubscribe();
   };
 
+  const deleteAllRides = async (): Promise<{ error: any }> => {
+    if (!user) {
+      return { error: new Error('User not authenticated') };
+    }
+
+    try {
+      // First, get all ride IDs owned by this user
+      const { data: userRides, error: fetchError } = await supabase
+        .from('rides')
+        .select('id')
+        .eq('rider_id', user.id);
+
+      if (fetchError) {
+        Sentry.captureException(fetchError);
+        return { error: fetchError };
+      }
+
+      if (userRides && userRides.length > 0) {
+        const rideIds = userRides.map((r: { id: string }) => r.id);
+
+        // Delete associated ride_requests first (FK constraint)
+        await supabase
+          .from('ride_requests')
+          .delete()
+          .in('ride_id', rideIds);
+
+        // Now delete the user's rides
+        const { error } = await supabase
+          .from('rides')
+          .delete()
+          .eq('rider_id', user.id);
+
+        if (error) {
+          Sentry.captureException(error);
+          return { error };
+        }
+      }
+
+      // Clear local state
+      setRides([]);
+      setCurrentRide(null);
+
+      return { error: null };
+    } catch (error) {
+      Sentry.captureException(error);
+      return { error };
+    }
+  };
+
+  // Fetch all available rides from OTHER users (for discovery)
+  const fetchAllRides = async () => {
+    if (!user) {
+      setAllRides([]);
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('rides')
+        .select('*')
+        .neq('rider_id', user.id)
+        .in('status', ['pending', 'active'])
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        Sentry.captureException(error);
+        setAllRides([]);
+      } else {
+        setAllRides(data || []);
+      }
+    } catch (error) {
+      Sentry.captureException(error);
+      setAllRides([]);
+    }
+  };
+
   const value: RideContextType = {
     rides,
+    allRides,
     currentRide,
     loading,
     error,
@@ -351,7 +482,10 @@ export const RideProvider: React.FC<RideProviderProps> = ({ children }) => {
     cancelRide,
     rejectRide,
     fetchRides,
+    fetchAllRides,
+    getRideHistory,
     subscribeToRides,
+    deleteAllRides,
   };
 
   return <RideContext.Provider value={value}>{children}</RideContext.Provider>;

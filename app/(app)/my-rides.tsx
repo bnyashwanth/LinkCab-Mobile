@@ -31,7 +31,8 @@ const BRAND = {
 export default function MyRidesScreen() {
   const router = useRouter();
   const { user } = useAuth();
-  const { rides: userRides, loading, fetchRides } = useRide();
+  const { rides: _rides, loading, fetchRides } = useRide();
+  const userRides: any[] = []; // hide all rides in My Rides
   const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
@@ -122,15 +123,7 @@ export default function MyRidesScreen() {
               {item.available_seats || 1} seats
             </Text>
           </View>
-          {item.fare && (
-            <View style={styles.metaItem}>
-              <Ionicons name="cash" size={14} color={BRAND.green} />
-              <Text style={styles.metaText}>
-                ₹{item.fare}
-              </Text>
-            </View>
-          )}
-        </View>
+                  </View>
       </View>
 
       {item.status === 'pending' && (

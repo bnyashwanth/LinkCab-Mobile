@@ -1,175 +1,24 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, Alert, SafeAreaView, StatusBar } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  TouchableOpacity,
+  TextInput,
+  Alert,
+  StatusBar,
+  SafeAreaView,
+  RefreshControl,
+  ActivityIndicator,
+} from 'react-native';
 import { useRouter } from 'expo-router';
+import { useAuth } from '@/contexts/AuthContext';
+import { useRide } from '@/contexts/RideContext';
+import { usePayment } from '@/contexts/PaymentContext';
 import { Ionicons } from '@expo/vector-icons';
-import { colors } from '../../constants/theme';
-import { useAuth } from '../../contexts/AuthContext';
-import { usePayment } from '../../contexts/PaymentContext';
-import { useRide } from '../../contexts/RideContext';
-
-// Transform rides to match discover format
-const demoRides = [
-  {
-    id: 'demo1',
-    status: 'pending',
-    pickup_address: 'Koramangala 4th Block, Bangalore',
-    dropoff_address: 'Bangalore Airport Terminal 1',
-    ride_date: '2026-02-15',
-    ride_time: '6:30 AM',
-    cab_type: 'sedan',
-    available_seats: 2,
-    created_at: new Date().toISOString(),
-    user: {
-      name: 'Rahul Sharma',
-      rating: 4.8,
-      verified: true
-    }
-  },
-  {
-    id: 'demo2',
-    status: 'active',
-    pickup_address: 'Indiranagar 100ft Road',
-    dropoff_address: 'Electronic City Phase 1',
-    ride_date: '2026-02-15',
-    ride_time: '8:00 AM',
-    cab_type: 'suv',
-    available_seats: 4,
-    created_at: new Date().toISOString(),
-    user: {
-      name: 'Priya Patel',
-      rating: 4.9,
-      verified: true
-    }
-  },
-  {
-    id: 'demo3',
-    status: 'pending',
-    pickup_address: 'MG Road Metro Station',
-    dropoff_address: 'Whitefield IT Hub',
-    ride_date: '2026-02-16',
-    ride_time: '9:00 AM',
-    cab_type: 'sedan',
-    available_seats: 1,
-    created_at: new Date().toISOString(),
-    user: {
-      name: 'Amit Kumar',
-      rating: 4.5,
-      verified: true
-    }
-  },
-  {
-    id: 'demo4',
-    status: 'active',
-    pickup_address: 'HSR Layout Sector 1',
-    dropoff_address: 'Marathahalli Bridge',
-    ride_date: '2026-02-16',
-    ride_time: '10:30 AM',
-    cab_type: 'hatchback',
-    available_seats: 3,
-    created_at: new Date().toISOString(),
-    user: {
-      name: 'Sneha Gupta',
-      rating: 4.7,
-      verified: true
-    }
-  },
-  {
-    id: 'demo5',
-    status: 'pending',
-    pickup_address: 'Jayanagar 4th Block',
-    dropoff_address: 'Majestic Bus Stand',
-    ride_date: '2026-02-17',
-    ride_time: '7:15 AM',
-    cab_type: 'auto',
-    available_seats: 2,
-    created_at: new Date().toISOString(),
-    user: {
-      name: 'Vikram Singh',
-      rating: 4.6,
-      verified: true
-    }
-  },
-  {
-    id: 'demo6',
-    status: 'active',
-    pickup_address: 'BTM Layout 2nd Stage',
-    dropoff_address: 'Koramangala 1st Block',
-    ride_date: '2026-02-17',
-    ride_time: '8:45 AM',
-    cab_type: 'sedan',
-    available_seats: 2,
-    created_at: new Date().toISOString(),
-    user: {
-      name: 'Anjali Desai',
-      rating: 4.9,
-      verified: true
-    }
-  },
-  {
-    id: 'demo7',
-    status: 'pending',
-    pickup_address: 'Silk Board Junction',
-    dropoff_address: 'Electronic City Phase 2',
-    ride_date: '2026-02-18',
-    ride_time: '9:30 AM',
-    cab_type: 'hatchback',
-    available_seats: 2,
-    created_at: new Date().toISOString(),
-    user: {
-      name: 'Rohit Verma',
-      rating: 4.3,
-      verified: false
-    }
-  },
-  {
-    id: 'demo8',
-    status: 'active',
-    pickup_address: 'Hebbal Flyover',
-    dropoff_address: 'Manyata Tech Park',
-    ride_date: '2026-02-18',
-    ride_time: '6:00 PM',
-    cab_type: 'sedan',
-    available_seats: 2,
-    created_at: new Date().toISOString(),
-    user: {
-      name: 'Kavita Reddy',
-      rating: 4.8,
-      verified: true
-    }
-  },
-  {
-    id: 'demo9',
-    status: 'active',
-    pickup_address: 'Bannerghatta Road',
-    dropoff_address: 'Electronic City',
-    ride_date: '2026-02-19',
-    ride_time: '7:30 AM',
-    cab_type: 'suv',
-    available_seats: 5,
-    created_at: new Date().toISOString(),
-    user: {
-      name: 'Arjun Nair',
-      rating: 5.0,
-      verified: true
-    }
-  },
-  {
-    id: 'demo10',
-    status: 'pending',
-    pickup_address: 'HSR Layout to Airport',
-    dropoff_address: 'Kempegowda Airport T2',
-    ride_date: '2026-02-19',
-    ride_time: '5:00 AM',
-    cab_type: 'sedan',
-    available_seats: 3,
-    created_at: new Date().toISOString(),
-    user: {
-      name: 'Meera Iyer',
-      rating: 4.7,
-      verified: true
-    }
-  }
-];
+import { colors } from '@/constants/theme';
+import { getValidRideId } from '@/utils/rideIdUtils';
 
 // Transform rides to match discover format
 const transformRides = (rides: any[]) => {
@@ -188,93 +37,16 @@ const transformRides = (rides: any[]) => {
   }));
 };
 
-const mockRides = [
-  {
-    id: '1',
-    driver: 'Maria Garcia',
-    from: 'Commercial Street',
-    to: 'UB City Mall',
-    time: '25 min',
-    seats: 2,
-    totalSeats: 3,
-    rating: 4.6,
-    category: 'central',
-    date: 'Today',
-    departureTime: '6:30 PM',
-  },
-  {
-    id: '11',
-    driver: 'William Chen',
-    from: 'Airport T2',
-    to: 'Electronic City Phase 1',
-    time: '60 min',
-    seats: 2,
-    totalSeats: 4,
-    rating: 4.8,
-    category: 'airport',
-    date: 'Today',
-    departureTime: '7:00 PM',
-  },
-  {
-    id: '12',
-    driver: 'Sophie Martin',
-    from: 'Cubbon Park',
-    to: 'ISKCON Temple',
-    time: '20 min',
-    seats: 3,
-    totalSeats: 4,
-    rating: 4.9,
-    category: 'tourist',
-    date: 'Today',
-    departureTime: '7:30 PM',
-  },
-  {
-    id: '13',
-    driver: 'Alex Thompson',
-    from: 'Manyata Tech Park',
-    to: 'Hebbal',
-    time: '30 min',
-    seats: 1,
-    totalSeats: 2,
-    rating: 4.5,
-    category: 'it',
-    date: 'Tomorrow',
-    departureTime: '8:00 AM',
-  },
-  {
-    id: '14',
-    driver: 'Nina Patel',
-    from: 'Domlur',
-    to: 'Embassy Golf Links',
-    time: '35 min',
-    seats: 2,
-    totalSeats: 3,
-    rating: 4.7,
-    category: 'it',
-    date: 'Tomorrow',
-    departureTime: '9:00 AM',
-  },
-  {
-    id: '15',
-    driver: 'Chris Evans',
-    from: 'Bannerghatta Zoo',
-    to: 'Electronic City',
-    time: '50 min',
-    seats: 2,
-    totalSeats: 4,
-    rating: 4.6,
-    category: 'tourist',
-    date: 'Tomorrow',
-    departureTime: '10:00 AM',
-  },
-];
-
 export default function AirportRidesScreen() {
   const router = useRouter();
   const { user } = useAuth();
   const { wallet, deductRequestFee } = usePayment();
   const { rides: contextRides, loading } = useRide();
   const [searchQuery, setSearchQuery] = useState('');
+  const [refreshing, setRefreshing] = useState(false);
+
+  // Use only real rides from context
+  const rides = contextRides;
 
   // Transform rides to match discover format
   const availableRides = transformRides(contextRides || []);
@@ -287,11 +59,20 @@ export default function AirportRidesScreen() {
     return matchesSearch;
   });
 
+  const onRefresh = async () => {
+    setRefreshing(true);
+    // Refresh rides data
+    setRefreshing(false);
+  };
+
   const handleRequestToJoin = async (rideId: string) => {
     if (!user) {
       Alert.alert('Login Required', 'Please login to request a ride');
       return;
     }
+
+    // Convert ride ID to valid UUID using utility function
+    const mappedId = getValidRideId(rideId);
 
     // Check wallet balance
     if (!wallet || wallet.balance < 1) {
@@ -327,7 +108,7 @@ export default function AirportRidesScreen() {
           style: 'default',
           onPress: async () => {
             // Deduct the request fee
-            const { error, success } = await deductRequestFee(rideId);
+            const { error, success } = await deductRequestFee(mappedId);
             
             if (error || !success) {
               Alert.alert('Payment Failed', 'Failed to process request fee. Please try again.');
@@ -335,7 +116,7 @@ export default function AirportRidesScreen() {
             }
 
             // Navigate to ride booking page
-            router.push(`/(app)/[book-ride]?id=${rideId}`);
+            router.push(`/(app)/[book-ride]?id=${mappedId}`);
           },
         },
       ]
@@ -449,6 +230,14 @@ export default function AirportRidesScreen() {
     );
   };
 
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <ActivityIndicator size="large" color={colors.brand.primary} />
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor={colors.background.primary} />
@@ -494,11 +283,14 @@ export default function AirportRidesScreen() {
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.ridesList}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
         ListEmptyComponent={
           <View style={styles.emptyState}>
             <Ionicons name="car-outline" size={48} color={colors.gray[500]} />
-            <Text style={styles.emptyTitle}>No rides found</Text>
-            <Text style={styles.emptySubtitle}>Try adjusting your search criteria</Text>
+            <Text style={styles.emptyTitle}>No airport rides found</Text>
+            <Text style={styles.emptySubtitle}>Try adjusting your search or check back later</Text>
           </View>
         }
       />
@@ -509,7 +301,7 @@ export default function AirportRidesScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.gray[100],
+    backgroundColor: colors.background.primary,
   },
   header: {
     flexDirection: 'row',
@@ -519,11 +311,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     backgroundColor: colors.background.primary,
     borderBottomWidth: 1,
-    borderBottomColor: colors.gray[300],
-  },
-  headerCenter: {
-    flex: 1,
-    alignItems: 'center',
+    borderBottomColor: colors.gray[200],
   },
   backButton: {
     width: 44,
@@ -533,35 +321,26 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  headerCenter: {
+    flex: 1,
+    alignItems: 'center',
+  },
   headerTitle: {
     fontSize: 20,
     fontWeight: '700',
     color: colors.text.primary,
   },
   subtitle: {
-    fontSize: 14,
+    fontSize: 12,
     color: colors.gray[500],
-    marginTop: 4,
+    marginTop: 2,
   },
   headerSpacer: {
     width: 44,
   },
   searchSection: {
-    backgroundColor: colors.background.primary,
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.gray[300],
-  },
-  content: {
-    flex: 1,
-  },
-  contentContainer: {
-    paddingTop: 16,
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.gray[300],
+    paddingHorizontal: 16,
+    paddingVertical: 12,
   },
   searchBar: {
     flexDirection: 'row',
@@ -570,108 +349,88 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 12,
-    gap: 12,
   },
   searchInput: {
     flex: 1,
+    marginLeft: 12,
     fontSize: 16,
     color: colors.text.primary,
   },
   ridesList: {
     padding: 16,
-    gap: 12,
   },
-  emptyState: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: 80,
-  },
-  emptyTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: colors.text.primary,
-    marginTop: 16,
-  },
-  emptySubtitle: {
-    fontSize: 14,
-    color: colors.gray[500],
-    marginTop: 8,
-  },
-
-  // Ride Card Styles (exact match to discover)
   rideCard: {
     backgroundColor: colors.background.primary,
-    borderRadius: 18,
+    borderRadius: 16,
     padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: colors.gray[200],
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 12,
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
     elevation: 3,
-    borderWidth: 1,
-    borderColor: '#F0F0F0',
   },
   cardTopRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 14,
+    marginBottom: 16,
   },
   driverRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    flex: 1,
   },
   driverAvatar: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: colors.secondary[500],
+    backgroundColor: colors.brand.primary,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 10,
+    marginRight: 12,
   },
   driverInitials: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: colors.text.primary,
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.background.primary,
   },
   verifiedDot: {
     position: 'absolute',
-    bottom: -1,
-    right: -1,
-    backgroundColor: '#22C55E',
-    width: 14,
-    height: 14,
-    borderRadius: 7,
+    bottom: -2,
+    right: -2,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: colors.brand.secondary,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
     borderColor: colors.background.primary,
   },
   driverName: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '600',
     color: colors.text.primary,
-    marginBottom: 2,
   },
   driverMeta: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 3,
+    marginTop: 2,
   },
   ratingText: {
     fontSize: 12,
-    fontWeight: '600',
-    color: colors.text.primary,
+    color: colors.gray[600],
+    marginLeft: 4,
   },
   statusPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 16,
-    gap: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
   },
   statusPillAvailable: {
     backgroundColor: '#DCFCE7',
@@ -683,117 +442,127 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
+    marginRight: 4,
   },
   dotAvailable: {
-    backgroundColor: colors.success[500],
+    backgroundColor: '#22C55E',
   },
   dotBooked: {
-    backgroundColor: colors.danger[500],
+    backgroundColor: '#EF4444',
   },
   statusPillText: {
-    fontSize: 11,
-    fontWeight: '600',
+    fontSize: 12,
+    fontWeight: '500',
   },
   statusPillTextAvailable: {
-    color: colors.success[500],
+    color: '#166534',
   },
   statusPillTextBooked: {
-    color: colors.danger[500],
+    color: '#991B1B',
   },
   routeTimeline: {
-    marginBottom: 14,
+    marginBottom: 16,
   },
   timelineRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
+    alignItems: 'flex-start',
   },
   timelineMarker: {
-    width: 20,
+    width: 24,
     alignItems: 'center',
   },
   timelineDotGreen: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
     backgroundColor: '#22C55E',
-    borderWidth: 2,
-    borderColor: '#BBF7D0',
   },
   timelineDotRed: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
     backgroundColor: '#EF4444',
-    borderWidth: 2,
-    borderColor: '#FECACA',
+  },
+  timelineContent: {
+    flex: 1,
+    marginLeft: 8,
+  },
+  timelineLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: colors.gray[500],
+    marginBottom: 2,
+  },
+  timelineAddress: {
+    fontSize: 14,
+    color: colors.text.primary,
+    fontWeight: '500',
   },
   timelineConnector: {
-    paddingLeft: 9,
-    height: 16,
+    marginLeft: 12,
+    height: 20,
     justifyContent: 'center',
   },
   dashedLine: {
     width: 2,
-    height: 16,
+    height: 20,
     backgroundColor: colors.gray[300],
     borderRadius: 1,
-  },
-  timelineContent: {
-    flex: 1,
-  },
-  timelineLabel: {
-    fontSize: 9,
-    fontWeight: '700',
-    color: colors.gray[500],
-    letterSpacing: 0.6,
-    marginBottom: 2,
-  },
-  timelineAddress: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: colors.text.primary,
   },
   infoChipsRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
-    marginBottom: 14,
+    marginBottom: 16,
   },
   infoChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F5F5F4',
-    borderRadius: 8,
     paddingHorizontal: 8,
-    paddingVertical: 5,
-    gap: 4,
+    paddingVertical: 4,
+    backgroundColor: colors.gray[100],
+    borderRadius: 8,
   },
   infoChipText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#44403C',
+    fontSize: 12,
+    color: colors.text.primary,
+    marginLeft: 4,
   },
   ctaBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.secondary[500],
-    borderRadius: 12,
+    backgroundColor: colors.brand.primary,
     paddingVertical: 12,
-    gap: 6,
+    borderRadius: 12,
   },
   ctaBtnDisabled: {
-    backgroundColor: colors.gray[100],
+    backgroundColor: colors.gray[200],
   },
   ctaBtnText: {
     fontSize: 14,
-    fontWeight: '700',
-    color: colors.text.primary,
+    fontWeight: '600',
+    color: colors.background.primary,
+    marginLeft: 8,
   },
   ctaBtnTextDisabled: {
     color: colors.gray[500],
   },
+  emptyState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 60,
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: colors.text.primary,
+    marginTop: 16,
+  },
+  emptySubtitle: {
+    fontSize: 14,
+    color: colors.gray[500],
+    marginTop: 8,
+    textAlign: 'center',
+  },
 });
-
-

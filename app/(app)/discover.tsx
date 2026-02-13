@@ -1,37 +1,14 @@
 import React, { useState, useRef } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  TextInput,
-  Dimensions,
-  StatusBar,
-  FlatList,
-  Alert,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import { StyleSheet, View, Text, TouchableOpacity, FlatList, ScrollView, Alert, TextInput, Dimensions, SafeAreaView, StatusBar } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import LinkCabLogo from '@/components/LinkCabLogo';
+import { colors } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePayment } from '@/contexts/PaymentContext';
+import { useRide } from '@/contexts/RideContext';
+import { getValidRideId } from '@/utils/rideIdUtils';
 
 const { width } = Dimensions.get('window');
-
-// Brand Colors
-const BRAND = {
-  yellow: '#FFD700',
-  yellowLight: '#FFF8DC',
-  yellowDark: '#E6C200',
-  black: '#1A1A1A',
-  blackLight: '#333333',
-  white: '#FFFFFF',
-  gray: '#6B7280',
-  grayLight: '#F5F5F5',
-  grayMedium: '#E5E7EB',
-};
 
 const categories = [
   { id: 'all', label: 'All', icon: 'grid-outline' },
@@ -128,17 +105,18 @@ const popularDestinations = [
   { id: '67', name: 'Vidhana Soudha', address: 'State Legislature, Dr. Ambedkar Road', rides: 89, category: 'tourist', rating: 4.6 },
 ];
 
-const trendingRoutes: any[] = [
-  // Real rides will be fetched from database
-  // This array is now empty and will be populated with real data
-];
-
 export default function DiscoverScreen() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const { wallet } = usePayment();
+  const { allRides, fetchAllRides } = useRide();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
+
+  // Fetch rides from other users on mount
+  React.useEffect(() => {
+    if (user) fetchAllRides();
+  }, [user]);
 
   const filteredDestinations = popularDestinations.filter((d) => {
     const matchesSearch =
@@ -157,7 +135,7 @@ export default function DiscoverScreen() {
       {/* Top: Icon + Name */}
       <View style={styles.destTopRow}>
         <View style={styles.destIcon}>
-          <Ionicons name="location" size={18} color={BRAND.black} />
+          <Ionicons name="location" size={18} color={"#1A1A1A"} />
         </View>
         <View style={styles.destNameWrap}>
           <Text style={styles.destinationName} numberOfLines={1}>{item.name}</Text>
@@ -168,7 +146,7 @@ export default function DiscoverScreen() {
       {/* Info Chips */}
       <View style={styles.destChips}>
         <View style={styles.destChip}>
-          <Ionicons name="car-outline" size={12} color={BRAND.black} />
+          <Ionicons name="car-outline" size={12} color={"#1A1A1A"} />
           <Text style={styles.destChipText}>{item.rides} rides</Text>
         </View>
         <View style={styles.destChip}>
@@ -180,7 +158,7 @@ export default function DiscoverScreen() {
       {/* CTA */}
       <View style={styles.destCta}>
         <Text style={styles.destCtaText}>Explore</Text>
-        <Ionicons name="arrow-forward" size={14} color={BRAND.black} />
+        <Ionicons name="arrow-forward" size={14} color={"#1A1A1A"} />
       </View>
     </TouchableOpacity>
   );
@@ -190,6 +168,9 @@ export default function DiscoverScreen() {
       Alert.alert('Login Required', 'Please login to request a ride');
       return;
     }
+
+    // Convert ride ID to valid UUID using utility function
+    const mappedId = getValidRideId(rideId);
 
     // Check wallet balance
     if (!wallet || wallet.balance <= 0) {
@@ -212,7 +193,7 @@ export default function DiscoverScreen() {
     }
 
     // Navigate to ride booking page
-    router.push(`/(app)/[book-ride]?id=${rideId}`);
+    router.push(`/(app)/[book-ride]?id=${mappedId}`);
   };
 
   const renderRoute = ({ item }: any) => {
@@ -231,7 +212,7 @@ export default function DiscoverScreen() {
               <Text style={styles.driverInitials}>{initials}</Text>
               {item.verified && (
                 <View style={styles.verifiedDot}>
-                  <Ionicons name="checkmark" size={8} color={BRAND.white} />
+                  <Ionicons name="checkmark" size={8} color={"#FFFFFF"} />
                 </View>
               )}
             </View>
@@ -273,19 +254,19 @@ export default function DiscoverScreen() {
         {/* Info Chips */}
         <View style={styles.infoChipsRow}>
           <View style={styles.infoChip}>
-            <Ionicons name="calendar-outline" size={13} color={BRAND.black} />
+            <Ionicons name="calendar-outline" size={13} color={"#1A1A1A"} />
             <Text style={styles.infoChipText}>{item.date}</Text>
           </View>
           <View style={styles.infoChip}>
-            <Ionicons name="time-outline" size={13} color={BRAND.black} />
+            <Ionicons name="time-outline" size={13} color={"#1A1A1A"} />
             <Text style={styles.infoChipText}>{item.time}</Text>
           </View>
           <View style={styles.infoChip}>
-            <Ionicons name="car-sport-outline" size={13} color={BRAND.black} />
+            <Ionicons name="car-sport-outline" size={13} color={"#1A1A1A"} />
             <Text style={styles.infoChipText}>{item.cabType}</Text>
           </View>
           <View style={styles.infoChip}>
-            <Ionicons name="people-outline" size={13} color={BRAND.black} />
+            <Ionicons name="people-outline" size={13} color={"#1A1A1A"} />
             <Text style={styles.infoChipText}>{item.seats}</Text>
           </View>
         </View>
@@ -293,7 +274,7 @@ export default function DiscoverScreen() {
         {/* CTA Button */}
         <TouchableOpacity
           style={[
-            styles.ctaBtn, 
+            styles.ctaBtn,
             !item.available && styles.ctaBtnDisabled,
             (!wallet || wallet.balance <= 0) && styles.ctaBtnDisabled
           ]}
@@ -302,33 +283,34 @@ export default function DiscoverScreen() {
           activeOpacity={0.85}
         >
           <Text style={[
-            styles.ctaBtnText, 
+            styles.ctaBtnText,
             !item.available && styles.ctaBtnTextDisabled,
             (!wallet || wallet.balance <= 0) && styles.ctaBtnTextDisabled
           ]}>
-            {!item.available 
-              ? 'Fully Booked' 
-              : (!wallet || wallet.balance <= 0) 
-                ? 'Top Up Required' 
+            {!item.available
+              ? 'Fully Booked'
+              : (!wallet || wallet.balance <= 0)
+                ? 'Top Up Required'
                 : 'Request to Join'
             }
           </Text>
-          {item.available && (wallet && wallet.balance > 0) && <Ionicons name="arrow-forward" size={16} color={BRAND.black} />}
+          {item.available && (wallet && wallet.balance > 0) && <Ionicons name="arrow-forward" size={16} color={"#1A1A1A"} />}
         </TouchableOpacity>
       </TouchableOpacity>
     );
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <StatusBar barStyle="dark-content" backgroundColor={BRAND.white} />
+    <SafeAreaView style={styles.container}>
+      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      <View style={styles.topSpacer} />
 
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-          <Ionicons name="arrow-back" size={24} color={BRAND.black} />
+          <Ionicons name="arrow-back" size={24} color={"#1A1A1A"} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Discover Routes</Text>
+        <Text style={styles.headerTitle}>Discover</Text>
         <View style={styles.headerSpacer} />
       </View>
 
@@ -340,23 +322,41 @@ export default function DiscoverScreen() {
       >
         {/* Hero Section */}
         <View style={styles.heroSection}>
-          <Text style={styles.heroSubtitle}>Find popular destinations and trending routes</Text>
-
+          <Text style={styles.welcomeText}>Good to see you, {profile?.full_name || 'Explorer'}!</Text>
+          <Text style={styles.welcomeSubtitle}>Ready for your next adventure?</Text>
           {/* Search Bar */}
           <View style={styles.searchContainer}>
-            <Ionicons name="search" size={20} color={BRAND.yellow} />
+            <View style={styles.searchIconContainer}>
+              <Ionicons name="search" size={20} color={"#6B7280"} />
+            </View>
             <TextInput
               style={styles.searchInput}
-              placeholder="Search destinations..."
+              placeholder="Where do you want to go?"
               value={searchQuery}
               onChangeText={setSearchQuery}
-              placeholderTextColor={BRAND.gray}
+              placeholderTextColor={"#9CA3AF"}
             />
             {searchQuery.length > 0 && (
               <TouchableOpacity onPress={() => setSearchQuery('')} style={styles.clearButton}>
-                <Ionicons name="close-circle" size={20} color={BRAND.gray} />
+                <Ionicons name="close-circle" size={18} color={"#9CA3AF"} />
               </TouchableOpacity>
             )}
+          </View>
+
+          {/* Quick Filters */}
+          <View style={styles.quickFilters}>
+            <TouchableOpacity style={styles.filterChip}>
+              <Ionicons name="location" size={14} color={"#FFD700"} />
+              <Text style={styles.filterChipText}>Near Me</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.filterChip}>
+              <Ionicons name="time" size={14} color={"#FFD700"} />
+              <Text style={styles.filterChipText}>Popular</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.filterChip}>
+              <Ionicons name="pricetag" size={14} color={"#FFD700"} />
+              <Text style={styles.filterChipText}>Best Price</Text>
+            </TouchableOpacity>
           </View>
 
           {/* Category Pills */}
@@ -377,7 +377,7 @@ export default function DiscoverScreen() {
                 <Ionicons
                   name={category.icon as any}
                   size={16}
-                  color={selectedCategory === category.id ? BRAND.black : BRAND.yellow}
+                  color={selectedCategory === category.id ? "#1A1A1A" : "#FFD700"}
                 />
                 <Text style={[
                   styles.categoryPillText,
@@ -410,7 +410,7 @@ export default function DiscoverScreen() {
           />
         </View>
 
-        {/* Trending Routes */}
+        {/* Trending Routes - now using real rides */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Trending Routes</Text>
@@ -419,13 +419,116 @@ export default function DiscoverScreen() {
             </TouchableOpacity>
           </View>
 
-          <View style={styles.routesList}>
-            {trendingRoutes.map((route) => (
-              <View key={route.id}>
-                {renderRoute({ item: route })}
-              </View>
-            ))}
-          </View>
+          {allRides.length > 0 ? (
+            <FlatList
+              data={allRides}
+              renderItem={({ item }: any) => {
+                const initials = (item.pickup_address || 'R')[0].toUpperCase();
+                return (
+                  <TouchableOpacity
+                    style={styles.rideCard}
+                    onPress={() => handleRequestToJoin(item.id)}
+                    activeOpacity={0.92}
+                  >
+                    {/* Top Row: Creator + Status */}
+                    <View style={styles.cardTopRow}>
+                      <View style={styles.driverRow}>
+                        <View style={styles.driverAvatar}>
+                          <Text style={styles.driverInitials}>{initials}</Text>
+                        </View>
+                        <View>
+                          <Text style={styles.driverName} numberOfLines={1}>Ride Announcement</Text>
+                          <View style={styles.driverMeta}>
+                            <Ionicons name="time-outline" size={11} color={'#6B7280'} />
+                            <Text style={styles.ratingText}>
+                              {item.created_at ? new Date(item.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : 'Recent'}
+                            </Text>
+                          </View>
+                        </View>
+                      </View>
+                      <View style={[styles.statusPill, styles.statusPillAvailable]}>
+                        <View style={[styles.statusDot, styles.dotAvailable]} />
+                        <Text style={[styles.statusPillText, styles.statusPillTextAvailable]}>Available</Text>
+                      </View>
+                    </View>
+
+                    {/* Route Timeline */}
+                    <View style={styles.routeTimeline}>
+                      <View style={styles.timelineRow}>
+                        <View style={styles.timelineMarker}><View style={styles.timelineDotGreen} /></View>
+                        <View style={styles.timelineContent}>
+                          <Text style={styles.timelineLabel}>PICKUP</Text>
+                          <Text style={styles.timelineAddress} numberOfLines={1}>{item.pickup_address || 'Not specified'}</Text>
+                        </View>
+                      </View>
+                      <View style={styles.timelineConnector}><View style={styles.dashedLine} /></View>
+                      <View style={styles.timelineRow}>
+                        <View style={styles.timelineMarker}><View style={styles.timelineDotRed} /></View>
+                        <View style={styles.timelineContent}>
+                          <Text style={styles.timelineLabel}>DROP-OFF</Text>
+                          <Text style={styles.timelineAddress} numberOfLines={1}>{item.dropoff_address || 'Not specified'}</Text>
+                        </View>
+                      </View>
+                    </View>
+
+                    {/* Info Chips */}
+                    <View style={styles.infoChipsRow}>
+                      {item.ride_date && (
+                        <View style={styles.infoChip}>
+                          <Ionicons name="calendar-outline" size={13} color={"#1A1A1A"} />
+                          <Text style={styles.infoChipText}>{item.ride_date}</Text>
+                        </View>
+                      )}
+                      {item.ride_time && (
+                        <View style={styles.infoChip}>
+                          <Ionicons name="time-outline" size={13} color={"#1A1A1A"} />
+                          <Text style={styles.infoChipText}>{item.ride_time}</Text>
+                        </View>
+                      )}
+                      {item.cab_type && (
+                        <View style={styles.infoChip}>
+                          <Ionicons name="car-sport-outline" size={13} color={"#1A1A1A"} />
+                          <Text style={styles.infoChipText}>{item.cab_type}</Text>
+                        </View>
+                      )}
+                      <View style={styles.infoChip}>
+                        <Ionicons name="people-outline" size={13} color={"#1A1A1A"} />
+                        <Text style={styles.infoChipText}>{item.available_seats ?? 1} seat(s)</Text>
+                      </View>
+                    </View>
+
+                    {/* CTA Button */}
+                    <TouchableOpacity
+                      style={[
+                        styles.ctaBtn,
+                        (!wallet || wallet.balance <= 0) && styles.ctaBtnDisabled
+                      ]}
+                      disabled={!wallet || wallet.balance <= 0}
+                      onPress={() => handleRequestToJoin(item.id)}
+                      activeOpacity={0.85}
+                    >
+                      <Text style={[
+                        styles.ctaBtnText,
+                        (!wallet || wallet.balance <= 0) && styles.ctaBtnTextDisabled
+                      ]}>
+                        {(!wallet || wallet.balance <= 0) ? 'Top Up Required' : 'Request to Join · ₹1'}
+                      </Text>
+                      {(wallet && wallet.balance > 0) && <Ionicons name="arrow-forward" size={16} color={"#1A1A1A"} />}
+                    </TouchableOpacity>
+                  </TouchableOpacity>
+                );
+              }}
+              keyExtractor={(item: any) => item.id}
+              scrollEnabled={false}
+              contentContainerStyle={styles.routesList}
+            />
+          ) : (
+            <View style={styles.emptyState}>
+              <Ionicons name="car-outline" size={48} color={colors.gray[500]} />
+              <Text style={styles.emptyTitle}>No rides available yet</Text>
+              <Text style={styles.emptySubtitle}>Create a ride or check back later</Text>
+            </View>
+          )}
         </View>
 
         {/* CTA Card */}
@@ -439,7 +542,7 @@ export default function DiscoverScreen() {
             <Text style={styles.ctaSubtitle}>Share your journey with co-travelers</Text>
           </View>
           <View style={styles.ctaButton}>
-            <Ionicons name="add" size={24} color={BRAND.black} />
+            <Ionicons name="add" size={24} color={"#1A1A1A"} />
           </View>
         </TouchableOpacity>
 
@@ -453,7 +556,11 @@ export default function DiscoverScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: BRAND.white,
+    backgroundColor: "#FFFFFF",
+  },
+  topSpacer: {
+    height: 48,
+    backgroundColor: "#FFFFFF",
   },
   header: {
     flexDirection: 'row',
@@ -461,22 +568,22 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: BRAND.white,
+    backgroundColor: "#FFFFFF",
     borderBottomWidth: 1,
-    borderBottomColor: BRAND.grayMedium,
+    borderBottomColor: "#E5E7EB",
   },
   backButton: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: BRAND.grayLight,
+    backgroundColor: "#F5F5F5",
     justifyContent: 'center',
     alignItems: 'center',
   },
   headerTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: BRAND.black,
+    color: "#1A1A1A",
   },
   headerSpacer: {
     width: 44,
@@ -496,7 +603,7 @@ const styles = StyleSheet.create({
   createRideButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: BRAND.yellow,
+    backgroundColor: "#FFD700",
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
@@ -505,49 +612,91 @@ const styles = StyleSheet.create({
   createRideText: {
     fontSize: 14,
     fontWeight: '600',
-    color: BRAND.black,
+    color: "#1A1A1A",
   },
   iconButton: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: BRAND.grayLight,
+    backgroundColor: "#6B7280",
     justifyContent: 'center',
     alignItems: 'center',
   },
   heroSection: {
     paddingHorizontal: 20,
   },
-  heroTitle: {
-    fontSize: 28,
+  welcomeText: {
+    fontSize: 24,
     fontWeight: '700',
-    color: BRAND.black,
-    marginBottom: 6,
+    color: "#1A1A1A",
+    marginBottom: 4,
   },
-  heroSubtitle: {
-    fontSize: 15,
-    color: BRAND.gray,
+  welcomeSubtitle: {
+    fontSize: 16,
+    color: "#6B7280",
     marginBottom: 20,
+    fontWeight: '500',
   },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: BRAND.grayLight,
-    borderRadius: 14,
-    paddingHorizontal: 16,
-    marginBottom: 20,
-    height: 52,
-    borderWidth: 2,
-    borderColor: BRAND.grayMedium,
+    backgroundColor: "#F9FAFB",
+    borderRadius: 16,
+    paddingHorizontal: 4,
+    marginBottom: 16,
+    height: 56,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2.22,
+    elevation: 3,
+  },
+  searchIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    backgroundColor: "#FFFFFF",
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginHorizontal: 4,
   },
   searchInput: {
     flex: 1,
-    marginLeft: 12,
-    fontSize: 15,
-    color: BRAND.black,
+    fontSize: 16,
+    color: "#1A1A1A",
+    fontWeight: '500',
   },
   clearButton: {
-    padding: 4,
+    padding: 8,
+    marginRight: 4,
+  },
+  quickFilters: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 20,
+  },
+  filterChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: "#FFFFFF",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    gap: 6,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2.22,
+    elevation: 2,
+  },
+  filterChipText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: "#374151",
   },
   categoryContainer: {
     paddingBottom: 4,
@@ -565,16 +714,16 @@ const styles = StyleSheet.create({
     borderColor: 'transparent',
   },
   categoryPillActive: {
-    backgroundColor: BRAND.yellow,
-    borderColor: BRAND.yellow,
+    backgroundColor: "#FFD700",
+    borderColor: "#FFD700",
   },
   categoryPillText: {
     fontSize: 13,
     fontWeight: '600',
-    color: BRAND.yellow,
+    color: "#FFD700",
   },
   categoryPillTextActive: {
-    color: BRAND.black,
+    color: "#1A1A1A",
   },
   content: {
     flex: 1,
@@ -589,9 +738,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: BRAND.white,
+    backgroundColor: "#FFFFFF",
     borderBottomWidth: 1,
-    borderBottomColor: BRAND.grayMedium,
+    borderBottomColor: "#6B7280",
   },
   compactHero: {
     paddingHorizontal: 20,
@@ -600,12 +749,12 @@ const styles = StyleSheet.create({
   compactHeroTitle: {
     fontSize: 24,
     fontWeight: '700',
-    color: BRAND.black,
+    color: "#1A1A1A",
     marginBottom: 4,
   },
   compactHeroSubtitle: {
     fontSize: 13,
-    color: BRAND.gray,
+    color: "#6B7280",
     marginBottom: 16,
   },
   section: {
@@ -621,12 +770,12 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: BRAND.black,
+    color: "#1A1A1A",
   },
   seeAllText: {
     fontSize: 14,
     fontWeight: '600',
-    color: BRAND.yellow,
+    color: "#FFD700",
   },
   destinationsList: {
     paddingHorizontal: 16,
@@ -638,7 +787,7 @@ const styles = StyleSheet.create({
 
   // Destination Card (premium)
   destinationCard: {
-    backgroundColor: BRAND.white,
+    backgroundColor: "#FFFFFF",
     borderRadius: 18,
     padding: 14,
     width: (width - 48) / 2,
@@ -659,7 +808,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: BRAND.yellow,
+    backgroundColor: "#FFD700",
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 10,
@@ -670,7 +819,7 @@ const styles = StyleSheet.create({
   destinationName: {
     fontSize: 14,
     fontWeight: '600',
-    color: BRAND.black,
+    color: "#1A1A1A",
     marginBottom: 2,
   },
   destinationAddress: {
@@ -700,7 +849,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: BRAND.yellow,
+    backgroundColor: "#FFD700",
     borderRadius: 10,
     paddingVertical: 8,
     gap: 4,
@@ -708,7 +857,7 @@ const styles = StyleSheet.create({
   destCtaText: {
     fontSize: 12,
     fontWeight: '700',
-    color: BRAND.black,
+    color: "#1A1A1A",
   },
 
   // Trending Route Card (premium)
@@ -718,7 +867,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   rideCard: {
-    backgroundColor: BRAND.white,
+    backgroundColor: "#FFFFFF",
     borderRadius: 18,
     padding: 16,
     shadowColor: '#000',
@@ -743,7 +892,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: BRAND.yellow,
+    backgroundColor: "#FFD700",
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 10,
@@ -751,7 +900,7 @@ const styles = StyleSheet.create({
   driverInitials: {
     fontSize: 14,
     fontWeight: '700',
-    color: BRAND.black,
+    color: "#1A1A1A",
   },
   verifiedDot: {
     position: 'absolute',
@@ -764,12 +913,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: BRAND.white,
+    borderColor: "#FFFFFF",
   },
   driverName: {
     fontSize: 14,
     fontWeight: '600',
-    color: BRAND.black,
+    color: "#1A1A1A",
     marginBottom: 2,
   },
   driverMeta: {
@@ -863,7 +1012,7 @@ const styles = StyleSheet.create({
   timelineAddress: {
     fontSize: 13,
     fontWeight: '500',
-    color: BRAND.black,
+    color: "#1A1A1A",
   },
 
   // Info Chips
@@ -893,7 +1042,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: BRAND.yellow,
+    backgroundColor: "#FFD700",
     borderRadius: 12,
     paddingVertical: 13,
     gap: 6,
@@ -904,14 +1053,14 @@ const styles = StyleSheet.create({
   ctaBtnText: {
     fontSize: 14,
     fontWeight: '700',
-    color: BRAND.black,
+    color: "#1A1A1A",
   },
   ctaBtnTextDisabled: {
     color: '#A8A29E',
   },
   ctaCard: {
     marginHorizontal: 20,
-    backgroundColor: BRAND.black,
+    backgroundColor: "#1A1A1A",
     borderRadius: 20,
     padding: 20,
     flexDirection: 'row',
@@ -924,18 +1073,33 @@ const styles = StyleSheet.create({
   ctaTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: BRAND.white,
+    color: "#FFFFFF",
     marginBottom: 4,
   },
   ctaSubtitle: {
     fontSize: 13,
-    color: BRAND.white,
+    color: "#FFFFFF",
     opacity: 0.9,
   },
   ctaButton: {
-    backgroundColor: BRAND.yellow,
+    backgroundColor: "#FFD700",
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 20,
+  },
+  emptyState: {
+    alignItems: 'center' as const,
+    paddingVertical: 40,
+  },
+  emptyTitle: {
+    fontSize: 16,
+    fontWeight: '600' as const,
+    color: '#1A1A1A',
+    marginTop: 12,
+  },
+  emptySubtitle: {
+    fontSize: 14,
+    color: '#6B7280',
+    marginTop: 4,
   },
 });

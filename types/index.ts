@@ -83,6 +83,7 @@ export interface AuthContextType {
 export interface RideContextType {
   currentRide: Ride | null;
   rides: Ride[];
+  allRides: Ride[];
   loading: boolean;
   error: string | null;
   createRide: (
@@ -106,7 +107,10 @@ export interface RideContextType {
   cancelRide: (rideId: string) => Promise<{ error: any }>;
   rejectRide: (rideId: string) => Promise<void>;
   fetchRides: () => Promise<void>;
+  fetchAllRides: () => Promise<void>;
+  getRideHistory: () => Promise<{ error: any; data: Ride[] }>;
   subscribeToRides: () => () => void;
+  deleteAllRides: () => Promise<{ error: any }>;
 }
 
 export type TransactionType = 'request_fee' | 'refund' | 'top_up' | 'ride_payment';
@@ -115,8 +119,20 @@ export interface Wallet {
   id: string;
   user_id: string;
   balance: number;
+  currency: string;
   created_at: string;
   updated_at: string;
+}
+
+export interface Notification {
+  id: string;
+  title: string;
+  body: string;
+  type: 'ride_request' | 'ride_accepted' | 'ride_cancelled' | 'ride_completed' | 'payment' | 'safety' | 'general';
+  read: boolean;
+  created_at: string;
+  user_id: string;
+  data?: any;
 }
 
 export interface Transaction {

@@ -31,44 +31,89 @@ interface Announcement {
     ride_time: string;
     available_seats: number;
   };
+  pickup_address: string;
+  dropoff_address: string;
+  ride_date: string;
+  ride_time: string;
+  available_seats: number;
 }
 
 export default function AnnouncementsScreen() {
   const router = useRouter();
   const { user } = useAuth();
-  const { rides } = useRide();
+  const { rides, fetchRides, deleteAllRides } = useRide();
   const [refreshing, setRefreshing] = useState(false);
   const [userAnnouncements, setUserAnnouncements] = useState<Announcement[]>([]);
 
-  // Filter rides created by current user and create announcements
+  // Fetch rides from database on mount
   useEffect(() => {
-    if (user && rides) {
-      const userRides = rides.filter(ride => ride.rider_id === user.id);
-      const announcements = userRides.map(ride => ({
-        id: ride.id,
-        title: `Ride to ${ride.dropoff_address.split(',')[0]}`,
-        message: `Your ride from ${ride.pickup_address.split(',')[0]} to ${ride.dropoff_address.split(',')[0]} is ${ride.status}`,
-        ride_id: ride.id,
-        created_at: ride.created_at,
-        status: ride.status,
-        ride: {
+    if (user) {
+      fetchRides();
+    }
+  }, [user]);
+
+  // Sync context rides into local userAnnouncements state
+  useEffect(() => {
+    if (user && rides.length > 0) {
+      const myAnnouncements: Announcement[] = rides
+        .filter((ride) => ride.rider_id === user.id)
+        .map((ride) => ({
+          id: ride.id,
+          title: `${ride.pickup_address} → ${ride.dropoff_address}`,
+          message: `${ride.cab_type ? ride.cab_type.charAt(0).toUpperCase() + ride.cab_type.slice(1) : 'Ride'} · ${ride.available_seats ?? 1} seat(s)`,
+          ride_id: ride.id,
+          created_at: ride.created_at,
+          status: ride.status,
+          ride: {
+            pickup_address: ride.pickup_address,
+            dropoff_address: ride.dropoff_address,
+            ride_date: ride.ride_date ?? '',
+            ride_time: ride.ride_time ?? '',
+            available_seats: ride.available_seats ?? 1,
+          },
           pickup_address: ride.pickup_address,
           dropoff_address: ride.dropoff_address,
-          ride_date: ride.ride_date || 'TBD',
-          ride_time: ride.ride_time || 'Flexible',
-          available_seats: ride.available_seats || 0,
-        }
-      }));
-      setUserAnnouncements(announcements);
+          ride_date: ride.ride_date ?? '',
+          ride_time: ride.ride_time ?? '',
+          available_seats: ride.available_seats ?? 1,
+        }));
+      setUserAnnouncements(myAnnouncements);
+    } else {
+      setUserAnnouncements([]);
     }
-  }, [user, rides]);
+  }, [rides, user]);
+
+  const handleClearAll = () => {
+    Alert.alert(
+      'Clear All Rides',
+      'Are you sure you want to delete all your ride announcements? This cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete All',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteAllRides();
+              setUserAnnouncements([]);
+            } catch (error) {
+              console.error('Error clearing rides:', error);
+            }
+          },
+        },
+      ]
+    );
+  };
 
   const onRefresh = async () => {
     setRefreshing(true);
-    // Simulate refresh delay
-    setTimeout(() => {
+    try {
+      await fetchRides();
+    } catch (error) {
+      console.error('Refresh error:', error);
+    } finally {
       setRefreshing(false);
-    }, 1000);
+    }
   };
 
   const handleAnnouncementPress = (announcement: Announcement) => {
@@ -108,7 +153,7 @@ export default function AnnouncementsScreen() {
       case 'cancelled':
         return 'Cancelled';
       case 'pending':
-        return 'Pending';
+        return 'Available';
       case 'in_progress':
         return 'In Progress';
       case 'booked':
@@ -120,7 +165,7 @@ export default function AnnouncementsScreen() {
 
   const renderAnnouncement = ({ item }: { item: Announcement }) => {
     const isAvailable = item.status === 'active' || item.status === 'pending';
-    
+
     return (
       <TouchableOpacity
         style={styles.newRideCard}
@@ -154,9 +199,9 @@ export default function AnnouncementsScreen() {
                 <Text style={styles.routeAddress} numberOfLines={1}>{item.ride.pickup_address}</Text>
               </View>
             </View>
-            
+
             <View style={styles.routeLine} />
-            
+
             <View style={styles.routePoint}>
               <View style={[styles.pointIcon, { backgroundColor: colors.danger[500] }]}>
                 <Ionicons name="flag" size={12} color="white" />
@@ -169,28 +214,35 @@ export default function AnnouncementsScreen() {
           </View>
         )}
 
-        {/* Bottom Row */}
+        {/* Ride Details */}
         {item.ride && (
-          <View style={styles.cardFooter}>
-            <View style={styles.infoRow}>
-              <View style={styles.infoItem}>
-                <Ionicons name="calendar" size={16} color={colors.gray[500]} />
-                <Text style={styles.infoText}>{item.ride.ride_date}</Text>
-              </View>
-              <View style={styles.infoItem}>
-                <Ionicons name="time" size={16} color={colors.gray[500]} />
-                <Text style={styles.infoText}>{item.ride.ride_time}</Text>
-              </View>
-              <View style={styles.infoItem}>
-                <Ionicons name="people" size={16} color={colors.gray[500]} />
-                <Text style={styles.infoText}>{item.ride.available_seats} seats</Text>
-              </View>
+          <View style={styles.cardTopRow}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginRight: 16 }}>
+              <Ionicons name="calendar-outline" size={14} color={colors.gray[500]} />
+              <Text style={{ fontSize: 12, color: colors.gray[500], marginLeft: 4 }}>{item.ride.ride_date}</Text>
             </View>
-            
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginRight: 16 }}>
+              <Ionicons name="time-outline" size={14} color={colors.gray[500]} />
+              <Text style={{ fontSize: 12, color: colors.gray[500], marginLeft: 4 }}>{item.ride.ride_time}</Text>
+            </View>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <Ionicons name="people-outline" size={14} color={colors.gray[500]} />
+              <Text style={{ fontSize: 12, color: colors.gray[500], marginLeft: 4 }}>{item.ride.available_seats} seats</Text>
+            </View>
+          </View>
+        )}
+
+        {/* Action Button */}
+        {item.ride && (
+          <View style={styles.cardTopRow}>
             <TouchableOpacity
-              style={[styles.actionButton, !isAvailable && styles.actionButtonDisabled]}
-              disabled={!isAvailable}
+              style={[
+                styles.actionButton,
+                !isAvailable && styles.actionButtonDisabled
+              ]}
               onPress={() => handleAnnouncementPress(item)}
+              disabled={!isAvailable}
+              activeOpacity={0.8}
             >
               <Text style={[styles.actionButtonText, !isAvailable && styles.actionButtonTextDisabled]}>
                 {isAvailable ? 'View Details' : getStatusText(item.status)}
@@ -205,13 +257,19 @@ export default function AnnouncementsScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor={colors.background.primary} />
-      
+
       <View style={styles.header}>
         <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={24} color={colors.text.primary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>My Announcements</Text>
-        <View style={styles.placeholder} />
+        {userAnnouncements.length > 0 ? (
+          <TouchableOpacity style={styles.backBtn} onPress={handleClearAll}>
+            <Ionicons name="trash-outline" size={22} color={colors.danger[500]} />
+          </TouchableOpacity>
+        ) : (
+          <View style={styles.placeholder} />
+        )}
       </View>
 
       <FlatList

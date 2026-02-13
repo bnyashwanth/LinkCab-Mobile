@@ -107,6 +107,12 @@ export default function AppLayout() {
           }}
         />
         <Tabs.Screen
+          name="login-animation"
+          options={{
+            href: null,
+          }}
+        />
+        <Tabs.Screen
           name="edit-profile"
           options={{
             href: null,
@@ -210,6 +216,24 @@ export default function AppLayout() {
         />
         <Tabs.Screen
           name="[book-ride]"
+          options={{
+            href: null,
+          }}
+        />
+        <Tabs.Screen
+          name="live-tracking"
+          options={{
+            href: null,
+          }}
+        />
+        <Tabs.Screen
+          name="search"
+          options={{
+            href: null,
+          }}
+        />
+        <Tabs.Screen
+          name="analytics"
           options={{
             href: null,
           }}
