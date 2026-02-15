@@ -4,11 +4,11 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  SafeAreaView,
   TouchableOpacity,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRide } from '@/contexts/RideContext';
 import { usePayment } from '@/contexts/PaymentContext';

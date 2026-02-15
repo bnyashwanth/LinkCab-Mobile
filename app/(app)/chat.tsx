@@ -70,7 +70,11 @@ export default function ChatScreen() {
 
   useEffect(() => {
     if (!user || !rideId || !otherUserId) {
-      router.back();
+      if (router.canGoBack?.()) {
+        router.back();
+      } else {
+        router.replace('/(app)/home');
+      }
       return;
     }
 

@@ -8,7 +8,6 @@ import {
   TextInput,
   Alert,
   StatusBar,
-  SafeAreaView,
   RefreshControl,
   ActivityIndicator,
 } from 'react-native';
@@ -18,6 +17,7 @@ import { useRide } from '@/contexts/RideContext';
 import { usePayment } from '@/contexts/PaymentContext';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '@/constants/theme';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { getValidRideId } from '@/utils/rideIdUtils';
 
 // Transform rides to match discover format

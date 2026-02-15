@@ -5,6 +5,7 @@ import { usePreventScreenCapture } from 'expo-screen-capture';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { RideProvider } from '@/contexts/RideContext';
 import { PaymentProvider } from '@/contexts/PaymentContext';
+import { NotificationProvider } from '@/contexts/NotificationContext';
 import { VerificationProvider } from '@/contexts/VerificationContext';
 import { MatchingProvider } from '@/contexts/MatchingContext';
 import { SafetyProvider } from '@/contexts/SafetyContext';
@@ -25,11 +26,13 @@ export default function RootLayout() {
               <EmergencyProvider>
                 <RideProvider>
                   <PaymentProvider>
-                    <Stack>
-                      <Stack.Screen name="index" options={{ headerShown: false }} />
-                      <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-                      <Stack.Screen name="(app)" options={{ headerShown: false }} />
-                    </Stack>
+                    <NotificationProvider>
+                      <Stack>
+                        <Stack.Screen name="index" options={{ headerShown: false }} />
+                        <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+                        <Stack.Screen name="(app)" options={{ headerShown: false }} />
+                      </Stack>
+                    </NotificationProvider>
                   </PaymentProvider>
                 </RideProvider>
               </EmergencyProvider>

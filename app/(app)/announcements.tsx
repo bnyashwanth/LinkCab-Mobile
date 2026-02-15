@@ -6,16 +6,16 @@ import {
   FlatList,
   TouchableOpacity,
   Alert,
-  SafeAreaView,
   StatusBar,
   RefreshControl,
   Platform,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { colors } from '../../constants/theme';
-import { useAuth } from '../../contexts/AuthContext';
-import { useRide } from '../../contexts/RideContext';
+import { colors } from '@/constants/theme'; // Ensure this path matches your project
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useAuth } from '@/contexts/AuthContext'; // Ensure this path matches your project
+import { useRide } from '@/contexts/RideContext'; // Ensure this path matches your project
 
 interface Announcement {
   id: string;
@@ -118,7 +118,7 @@ export default function AnnouncementsScreen() {
 
   const handleAnnouncementPress = (announcement: Announcement) => {
     if (announcement.ride) {
-      router.push(`/(app)/[book-ride]?id=${announcement.ride_id}`);
+      router.push(`/(app)/announcement-details?id=${announcement.ride_id}`);
     }
   };
 
@@ -255,11 +255,21 @@ export default function AnnouncementsScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    // FIXED: Added edges={['top']} and removed manual marginTop in styles
+    <SafeAreaView style={styles.container} edges={['top']}>
       <StatusBar barStyle="dark-content" backgroundColor={colors.background.primary} />
 
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
+        <TouchableOpacity
+          style={styles.backBtn}
+          onPress={() => {
+            if (router.canGoBack?.()) {
+              router.back();
+            } else {
+              router.replace('/(app)/home');
+            }
+          }}
+        >
           <Ionicons name="arrow-back" size={24} color={colors.text.primary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>My Announcements</Text>
@@ -310,7 +320,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 16,
     backgroundColor: colors.background.primary,
-    marginTop: Platform.OS === 'ios' ? 8 : (StatusBar.currentHeight || 0) + 4,
+    // FIXED: Removed manual marginTop calculation as SafeAreaView handles it
   },
   backBtn: {
     width: 44,
@@ -334,7 +344,6 @@ const styles = StyleSheet.create({
     padding: 20,
     gap: 12,
   },
-  // New modern card design
   newRideCard: {
     backgroundColor: colors.background.primary,
     borderRadius: 16,
@@ -348,180 +357,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.gray[200],
   },
-  cardTopRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  titleRow: {
-    flex: 1,
-    marginRight: 12,
-  },
-  announcementTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.text.primary,
-    lineHeight: 20,
-  },
-  statusPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 16,
-    gap: 6,
-  },
-  statusPillAvailable: {
-    backgroundColor: '#DCFCE7',
-  },
-  statusPillBooked: {
-    backgroundColor: '#FEE2E2',
-  },
-  statusDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-  },
-  dotAvailable: {
-    backgroundColor: colors.success[500],
-  },
-  dotBooked: {
-    backgroundColor: colors.danger[500],
-  },
-  statusPillText: {
-    fontSize: 11,
-    fontWeight: '600',
-  },
-  statusPillTextAvailable: {
-    color: colors.success[500],
-  },
-  statusPillTextBooked: {
-    color: colors.danger[500],
-  },
-  routeTimeline: {
-    marginBottom: 12,
-  },
-  timelineRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    marginBottom: 8,
-  },
-  timelineMarker: {
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    backgroundColor: colors.gray[100],
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 8,
-  },
-  timelineDotGreen: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: colors.success[500],
-  },
-  timelineContent: {
-    flex: 1,
-  },
-  timelineLabel: {
-    fontSize: 10,
-    fontWeight: '600',
-    color: colors.gray[500],
-    marginBottom: 2,
-  },
-  timelineAddress: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: colors.text.primary,
-  },
-  timelineConnector: {
-    alignItems: 'center',
-    height: 16,
-    justifyContent: 'center',
-    marginHorizontal: 8,
-  },
-  dashedLine: {
-    width: 2,
-    height: 16,
-    backgroundColor: colors.gray[300],
-    borderRadius: 1,
-  },
-  timelineDotRed: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: colors.danger[500],
-  },
-  infoChipsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 12,
-  },
-  infoChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.gray[50],
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-    gap: 4,
-  },
-  infoChipText: {
-    fontSize: 11,
-    fontWeight: '500',
-    color: colors.text.primary,
-  },
-  ctaBtn: {
-    backgroundColor: colors.secondary[500],
-    borderRadius: 8,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  ctaBtnDisabled: {
-    backgroundColor: colors.gray[300],
-  },
-  ctaBtnText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.text.primary,
-  },
-  ctaBtnTextDisabled: {
-    color: colors.gray[500],
-  },
-  emptyState: {
-    alignItems: 'center',
-    paddingVertical: 60,
-  },
-  emptyTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: colors.text.primary,
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  emptySubtitle: {
-    fontSize: 14,
-    color: colors.gray[500],
-    textAlign: 'center',
-    marginBottom: 24,
-  },
-  createRideBtn: {
-    backgroundColor: colors.secondary[500],
-    borderRadius: 8,
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-  },
-  createRideBtnText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.text.primary,
-  },
-  // New card styles
   cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -603,25 +438,11 @@ const styles = StyleSheet.create({
     marginLeft: 12,
     marginBottom: 12,
   },
-  cardFooter: {
-    borderTopWidth: 1,
-    borderTopColor: colors.gray[200],
-    paddingTop: 16,
-  },
-  infoRow: {
+  cardTopRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 12,
-  },
-  infoItem: {
-    flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-  },
-  infoText: {
-    fontSize: 12,
-    color: colors.gray[600],
-    fontWeight: '500',
+    marginBottom: 12,
   },
   actionButton: {
     backgroundColor: colors.secondary[500],
@@ -640,5 +461,33 @@ const styles = StyleSheet.create({
   },
   actionButtonTextDisabled: {
     color: colors.gray[500],
+  },
+  emptyState: {
+    alignItems: 'center',
+    paddingVertical: 60,
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: colors.text.primary,
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  emptySubtitle: {
+    fontSize: 14,
+    color: colors.gray[500],
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+  createRideBtn: {
+    backgroundColor: colors.secondary[500],
+    borderRadius: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+  },
+  createRideBtnText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.text.primary,
   },
 });

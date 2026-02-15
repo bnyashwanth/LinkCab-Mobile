@@ -70,6 +70,31 @@ const genderPreferences = [
   { label: 'Female', value: 'female', icon: 'woman-outline' },
 ];
 
+const smokingPreferences = [
+  { label: 'No Preference', value: 'any' },
+  { label: 'Non-Smoking', value: 'non_smoking' },
+  { label: 'Smoking', value: 'smoking' },
+];
+
+const petsPreferences = [
+  { label: 'No Preference', value: 'any' },
+  { label: 'Pets Allowed', value: 'allowed' },
+  { label: 'No Pets', value: 'not_allowed' },
+];
+
+const vibePreferences = [
+  { label: 'No Preference', value: 'any' },
+  { label: 'Quiet', value: 'quiet' },
+  { label: 'Talking', value: 'talking' },
+];
+
+const bookingApps = [
+  { label: 'Uber', value: 'Uber' },
+  { label: 'Ola', value: 'Ola' },
+  { label: 'Rapido', value: 'Rapido' },
+  { label: 'Other', value: 'Other' },
+];
+
 export default function CreateRideScreen() {
   const router = useRouter();
   const { createRide } = useRide();
@@ -80,7 +105,13 @@ export default function CreateRideScreen() {
   const [dropoff, setDropoff] = useState<Location | null>(null);
   const [selectedCabType, setSelectedCabType] = useState('sedan');
   const [availableSeats, setAvailableSeats] = useState(1);
+  const [totalFare, setTotalFare] = useState('');
+  const [bookingApp, setBookingApp] = useState('');
+  const [customBookingApp, setCustomBookingApp] = useState('');
   const [genderPreference, setGenderPreference] = useState('any');
+  const [smokingPreference, setSmokingPreference] = useState('any');
+  const [petsPreference, setPetsPreference] = useState('any');
+  const [vibePreference, setVibePreference] = useState('any');
   const [notes, setNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -160,9 +191,32 @@ export default function CreateRideScreen() {
       return;
     }
 
+    const numericFare = Number(totalFare);
+    if (!totalFare || Number.isNaN(numericFare) || numericFare <= 0) {
+      Alert.alert('Missing Fare', 'Please enter a valid total fare for the ride');
+      return;
+    }
+
+    const resolvedBookingApp =
+      bookingApp === 'Other' ? customBookingApp.trim() : bookingApp;
+
+    const preferenceLabels: string[] = [];
+    if (smokingPreference !== 'any') {
+      preferenceLabels.push(smokingPreference === 'non_smoking' ? 'Non-smoking' : 'Smoking');
+    }
+    if (petsPreference !== 'any') {
+      preferenceLabels.push(petsPreference === 'allowed' ? 'Pets allowed' : 'No pets');
+    }
+    if (vibePreference !== 'any') {
+      preferenceLabels.push(vibePreference === 'quiet' ? 'Quiet ride' : 'Talking preferred');
+    }
+    const preferenceNote =
+      preferenceLabels.length > 0 ? `Preferences: ${preferenceLabels.join(', ')}` : '';
+    const combinedNotes = [preferenceNote, notes].filter(Boolean).join(' | ');
+
     setIsSubmitting(true);
     try {
-      const result = await createRide({
+      const createPromise = createRide({
         pickup_location: {
           latitude: pickup.latitude,
           longitude: pickup.longitude,
@@ -177,9 +231,17 @@ export default function CreateRideScreen() {
         ride_time: formatTime(rideTime),
         available_seats: availableSeats,
         cab_type: selectedCabType,
+        estimated_fare: numericFare,
+        booking_app: resolvedBookingApp || undefined,
         gender_preference: genderPreference,
-        notes: notes || undefined,
+        notes: combinedNotes || undefined,
       });
+      const result = await Promise.race([
+        createPromise,
+        new Promise<{ error: any; data: any }>((_, reject) =>
+          setTimeout(() => reject(new Error('Request timed out. Please check your connection and try again.')), 15000)
+        ),
+      ]);
 
       if (result.error) {
         Alert.alert('Error', result.error.message || 'Failed to create ride');
@@ -367,7 +429,71 @@ export default function CreateRideScreen() {
           </View>
         </View>
 
-        {/* Gender Preference Section */}
+        {/* Fare Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Total Fare</Text>
+          <TextInput
+            style={styles.fareInput}
+            placeholder="Enter total ride price (e.g., 800)"
+            placeholderTextColor={BRAND.gray}
+            value={totalFare}
+            onChangeText={setTotalFare}
+            keyboardType="numeric"
+          />
+          <View style={styles.priceCard}>
+            <View style={styles.priceInfo}>
+              <View style={styles.priceIconContainer}>
+                <Ionicons name="pricetag" size={20} color={BRAND.black} />
+              </View>
+              <View>
+                <Text style={styles.priceLabel}>Estimated per person</Text>
+                <Text style={styles.priceValue}>
+                  ₹{totalFare && !Number.isNaN(Number(totalFare))
+                    ? Math.ceil(Number(totalFare) / Math.max(availableSeats, 1))
+                    : '--'}
+                </Text>
+              </View>
+            </View>
+            <Text style={styles.priceHint}>Based on {availableSeats} seat(s)</Text>
+          </View>
+        </View>
+
+        {/* Booking App Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Booked Via (Optional)</Text>
+          <View style={styles.bookingAppsRow}>
+            {bookingApps.map((app) => (
+              <TouchableOpacity
+                key={app.value}
+                style={[
+                  styles.bookingAppButton,
+                  bookingApp === app.value && styles.bookingAppButtonSelected,
+                ]}
+                onPress={() => setBookingApp(app.value)}
+              >
+                <Text
+                  style={[
+                    styles.bookingAppButtonText,
+                    bookingApp === app.value && styles.bookingAppButtonTextSelected,
+                  ]}
+                >
+                  {app.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+          {bookingApp === 'Other' && (
+            <TextInput
+              style={styles.fareInput}
+              placeholder="Enter app name"
+              placeholderTextColor={BRAND.gray}
+              value={customBookingApp}
+              onChangeText={setCustomBookingApp}
+            />
+          )}
+        </View>
+
+        {/* Co-passenger Preference Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Co-passenger Preference</Text>
           <View style={styles.genderContainer}>
@@ -389,6 +515,69 @@ export default function CreateRideScreen() {
                   styles.genderButtonText,
                   genderPreference === pref.value && styles.genderButtonTextSelected
                 ]}>{pref.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          <Text style={styles.subSectionTitle}>Smoking</Text>
+          <View style={styles.preferenceRow}>
+            {smokingPreferences.map((pref) => (
+              <TouchableOpacity
+                key={pref.value}
+                style={[
+                  styles.preferenceButton,
+                  smokingPreference === pref.value && styles.preferenceButtonSelected
+                ]}
+                onPress={() => setSmokingPreference(pref.value)}
+              >
+                <Text style={[
+                  styles.preferenceButtonText,
+                  smokingPreference === pref.value && styles.preferenceButtonTextSelected
+                ]}>
+                  {pref.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          <Text style={styles.subSectionTitle}>Pets</Text>
+          <View style={styles.preferenceRow}>
+            {petsPreferences.map((pref) => (
+              <TouchableOpacity
+                key={pref.value}
+                style={[
+                  styles.preferenceButton,
+                  petsPreference === pref.value && styles.preferenceButtonSelected
+                ]}
+                onPress={() => setPetsPreference(pref.value)}
+              >
+                <Text style={[
+                  styles.preferenceButtonText,
+                  petsPreference === pref.value && styles.preferenceButtonTextSelected
+                ]}>
+                  {pref.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          <Text style={styles.subSectionTitle}>Ride Vibe</Text>
+          <View style={styles.preferenceRow}>
+            {vibePreferences.map((pref) => (
+              <TouchableOpacity
+                key={pref.value}
+                style={[
+                  styles.preferenceButton,
+                  vibePreference === pref.value && styles.preferenceButtonSelected
+                ]}
+                onPress={() => setVibePreference(pref.value)}
+              >
+                <Text style={[
+                  styles.preferenceButtonText,
+                  vibePreference === pref.value && styles.preferenceButtonTextSelected
+                ]}>
+                  {pref.label}
+                </Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -597,6 +786,13 @@ const styles = StyleSheet.create({
     color: BRAND.black,
     marginBottom: 12,
   },
+  subSectionTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: BRAND.black,
+    marginTop: 14,
+    marginBottom: 8,
+  },
 
   // Route Card
   routeCard: {
@@ -686,6 +882,21 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: '700',
     color: BRAND.yellow,
+  },
+  priceHint: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.7)',
+    fontWeight: '600',
+  },
+
+  fareInput: {
+    backgroundColor: BRAND.white,
+    borderRadius: 14,
+    padding: 14,
+    fontSize: 15,
+    color: BRAND.black,
+    borderWidth: 2,
+    borderColor: BRAND.grayMedium,
   },
 
   // Schedule
@@ -828,6 +1039,59 @@ const styles = StyleSheet.create({
     color: BRAND.gray,
   },
   genderButtonTextSelected: {
+    color: BRAND.black,
+  },
+
+  preferenceRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  preferenceButton: {
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 14,
+    backgroundColor: BRAND.white,
+    borderWidth: 2,
+    borderColor: BRAND.grayMedium,
+  },
+  preferenceButtonSelected: {
+    backgroundColor: BRAND.yellow,
+    borderColor: BRAND.yellow,
+  },
+  preferenceButtonText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: BRAND.gray,
+  },
+  preferenceButtonTextSelected: {
+    color: BRAND.black,
+  },
+
+  // Booking App
+  bookingAppsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  bookingAppButton: {
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 14,
+    backgroundColor: BRAND.white,
+    borderWidth: 2,
+    borderColor: BRAND.grayMedium,
+  },
+  bookingAppButtonSelected: {
+    backgroundColor: BRAND.yellow,
+    borderColor: BRAND.yellow,
+  },
+  bookingAppButtonText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: BRAND.gray,
+  },
+  bookingAppButtonTextSelected: {
     color: BRAND.black,
   },
 

@@ -30,7 +30,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
     setNotifications(prev => [notification, ...prev]);
     
     // Show system notification if supported
-    if ('Notification' in window) {
+    if (typeof window !== 'undefined' && 'Notification' in window) {
       new Notification(notification.title, {
         body: notification.body,
         icon: '/icon.png',
@@ -50,7 +50,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
 
   // Request notification permissions
   useEffect(() => {
-    if ('Notification' in window && 'requestPermission' in Notification) {
+    if (typeof window !== 'undefined' && 'Notification' in window && 'requestPermission' in Notification) {
       Notification.requestPermission();
     }
   }, []);

@@ -105,7 +105,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  const signUp = async (email: string, password: string, fullName: string) => {
+  const signUp = async (email: string, password: string, fullName: string, phoneNumber?: string) => {
     try {
       const { error } = await supabase.auth.signUp({
         email,
@@ -113,6 +113,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         options: {
           data: {
             full_name: fullName,
+            phone_number: phoneNumber || null,
           },
           // Email verification disabled for testing
           emailRedirectTo: undefined,

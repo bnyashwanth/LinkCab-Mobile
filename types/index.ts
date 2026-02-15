@@ -60,6 +60,7 @@ export interface Ride {
     rating?: number;
     verified?: boolean;
   };
+  booking_app?: string;
 }
 
 export interface Location {
@@ -73,7 +74,7 @@ export interface AuthContextType {
   profile: Profile | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
-  signUp: (email: string, password: string, fullName: string) => Promise<{ error: any }>;
+  signUp: (email: string, password: string, fullName: string, phoneNumber?: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
   signInWithOAuth: (provider: 'google' | 'facebook') => Promise<{ error: any }>;
   resetPassword: (email: string) => Promise<{ error: any }>;
@@ -93,6 +94,7 @@ export interface RideContextType {
         pickup_location: { latitude: number; longitude: number; address: string };
         dropoff_location: { latitude: number; longitude: number; address: string };
         estimated_fare?: number;
+        booking_app?: string;
         ride_date?: string;
         ride_time?: string;
         available_seats?: number;

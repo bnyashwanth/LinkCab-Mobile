@@ -5,7 +5,6 @@ import {
   StyleSheet,
   TouchableOpacity,
   Alert,
-  SafeAreaView,
   StatusBar,
   ActivityIndicator,
   ScrollView,
@@ -18,6 +17,7 @@ import { usePayment } from '@/contexts/PaymentContext';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '@/constants/theme';
 import { getValidRideId } from '@/utils/rideIdUtils';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 interface Ride {
   id: string;
@@ -35,6 +35,8 @@ interface Ride {
   available_seats?: number;
   cab_type?: string;
   fare?: number;
+  estimated_fare?: number;
+  booking_app?: string;
   currency?: string;
   payment_method?: string;
   payment_status?: string;
@@ -260,6 +262,11 @@ export default function BookRideScreen() {
     );
   }
 
+  const totalFare = ride.fare ?? ride.estimated_fare;
+  const seatCount = ride.available_seats && ride.available_seats > 0 ? ride.available_seats : 1;
+  const perPersonFare = totalFare ? totalFare / seatCount : null;
+  const bookingApp = ride.booking_app;
+
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor={customColors.background.primary} />
@@ -358,6 +365,14 @@ export default function BookRideScreen() {
               <Text style={styles.detailText}>{ride.available_seats || 1} seats</Text>
             </View>
           </View>
+          {bookingApp && (
+            <View style={styles.detailRow}>
+              <View style={styles.detailItem}>
+                <Ionicons name="phone-portrait-outline" size={20} color={customColors.text.secondary} />
+                <Text style={styles.detailText}>Booked via {bookingApp}</Text>
+              </View>
+            </View>
+          )}
         </View>
 
         {/* Fare Info */}
@@ -366,6 +381,18 @@ export default function BookRideScreen() {
             <Text style={styles.fareLabel}>Estimated Fare</Text>
             <Text style={styles.fareAmount}>
               {ride.currency || '₹'}{ride.fare}
+            </Text>
+          </View>
+        )}
+
+        {perPersonFare && (
+          <View style={styles.perPersonSection}>
+            <Text style={styles.perPersonLabel}>Estimated Per Person</Text>
+            <Text style={styles.perPersonAmount}>
+              {ride.currency || '₹'}{perPersonFare.toFixed(0)}
+            </Text>
+            <Text style={styles.perPersonNote}>
+              Based on {seatCount} seat{seatCount === 1 ? '' : 's'}
             </Text>
           </View>
         )}
@@ -619,6 +646,31 @@ const styles = StyleSheet.create({
     fontSize: 24,
     color: customColors.text.primary,
     fontWeight: '700',
+  },
+  perPersonSection: {
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    backgroundColor: customColors.background.secondary,
+    marginHorizontal: 20,
+    borderRadius: 16,
+    marginTop: 12,
+  },
+  perPersonLabel: {
+    fontSize: 14,
+    color: customColors.text.secondary,
+    fontWeight: '600',
+  },
+  perPersonAmount: {
+    fontSize: 26,
+    color: customColors.text.primary,
+    fontWeight: '800',
+    marginTop: 6,
+  },
+  perPersonNote: {
+    fontSize: 12,
+    color: customColors.text.secondary,
+    marginTop: 4,
   },
   buttonContainer: {
     paddingHorizontal: 20,

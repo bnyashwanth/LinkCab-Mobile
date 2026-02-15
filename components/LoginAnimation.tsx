@@ -19,34 +19,48 @@ export default function LoginAnimation({
   const [isVideoLoaded, setIsVideoLoaded] = useState(false);
   const fadeOutAnim = useRef(new Animated.Value(1)).current;
   const router = useRouter();
+  const fallbackTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const hasCompletedRef = useRef(false);
 
   const handleVideoEnd = (status: AVPlaybackStatus) => {
-    if (status.isLoaded && !status.isPlaying && !status.isBuffering) {
-      // Video has finished playing
-      // Fade out animation
-      Animated.timing(fadeOutAnim, {
-        toValue: 0,
-        duration: 500,
-        useNativeDriver: true,
-      }).start(() => {
-        // Navigate or callback after fade out
-        if (onComplete) {
-          onComplete();
-        } else {
-          // Default: navigate to home
-          router.replace('/(app)/home');
-        }
-      });
-    }
+    if (!status.isLoaded || status.isPlaying || status.isBuffering) return;
+    handleComplete();
   };
 
-  const handleVideoLoad = () => {
-    setIsVideoLoaded(true);
+  const handleComplete = () => {
+    if (hasCompletedRef.current) return;
+    hasCompletedRef.current = true;
+    Animated.timing(fadeOutAnim, {
+      toValue: 0,
+      duration: 500,
+      useNativeDriver: true,
+    }).start(() => {
+      if (onComplete) {
+        onComplete();
+      } else {
+        router.replace('/(app)/home');
+      }
+    });
   };
 
   const handleSkip = () => {
-    handleVideoEnd({} as AVPlaybackStatus);
+    handleComplete();
   };
+
+  useEffect(() => {
+    // Fallback to ensure we navigate even if the video fails to load/play
+    fallbackTimerRef.current = setTimeout(() => {
+      if (!isVideoLoaded) {
+        handleSkip();
+      }
+    }, 3000);
+
+    return () => {
+      if (fallbackTimerRef.current) {
+        clearTimeout(fallbackTimerRef.current);
+      }
+    };
+  }, [isVideoLoaded]);
 
   return (
     <View style={styles.container}>
@@ -58,7 +72,7 @@ export default function LoginAnimation({
           shouldPlay={autoPlay && isVideoLoaded}
           isLooping={false}
           onPlaybackStatusUpdate={handleVideoEnd}
-          onLoad={handleVideoLoad}
+          onLoad={() => setIsVideoLoaded(true)}
         />
         
         {/* Skip button for better UX */}

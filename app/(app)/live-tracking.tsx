@@ -4,7 +4,6 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  SafeAreaView,
   Alert,
   Dimensions,
 } from 'react-native';
@@ -13,6 +12,7 @@ import { Ionicons } from '@expo/vector-icons';
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 const { width, height } = Dimensions.get('window');
 
@@ -35,6 +35,7 @@ interface RideData {
 export default function LiveTrackingScreen() {
   const { user } = useAuth();
   const { id } = useLocalSearchParams();
+  const router = useRouter();
   const [ride, setRide] = useState<RideData | null>(null);
   const [loading, setLoading] = useState(true);
   const [tracking, setTracking] = useState(false);
@@ -42,16 +43,24 @@ export default function LiveTrackingScreen() {
   const mapRef = useRef<MapView>(null);
 
   useEffect(() => {
+    if (!id) {
+      setLoading(false);
+      return;
+    }
     fetchRideDetails();
-    subscribeToLocationUpdates();
+    const unsubscribe = subscribeToLocationUpdates();
     
     return () => {
-      // Cleanup subscriptions
+      if (unsubscribe) unsubscribe();
     };
   }, [id]);
 
   const fetchRideDetails = async () => {
     try {
+      if (!id) {
+        setLoading(false);
+        return;
+      }
       const { data, error } = await supabase
         .from('rides')
         .select('*')
@@ -77,6 +86,7 @@ export default function LiveTrackingScreen() {
   };
 
   const subscribeToLocationUpdates = () => {
+    if (!id) return;
     // Subscribe to real-time location updates
     const subscription = supabase
       .channel(`ride-tracking:${id}`)
@@ -112,6 +122,10 @@ export default function LiveTrackingScreen() {
         }
       )
       .subscribe();
+
+    return () => {
+      subscription.unsubscribe();
+    };
   };
 
   const handleEmergencyCall = () => {
@@ -161,7 +175,13 @@ export default function LiveTrackingScreen() {
       <View style={styles.header}>
         <TouchableOpacity 
           style={styles.backButton} 
-          onPress={() => useRouter().back()}
+          onPress={() => {
+            if (router.canGoBack?.()) {
+              router.back();
+            } else {
+              router.replace('/(app)/home');
+            }
+          }}
         >
           <Ionicons name="arrow-back" size={24} color="#1A1A1A" />
         </TouchableOpacity>

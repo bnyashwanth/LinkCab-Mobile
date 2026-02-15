@@ -1,0 +1,27 @@
+- Adjusted home logo position and smoothed bottom tab animation transitions.
+- Added total fare input with automatic per-person estimate on Create Ride.
+- Added booking app selection (Uber/Ola/Rapido/Other) on Create Ride and saved to rides.
+- Added co-passenger preferences (smoking, pets, vibe) stored in ride notes.
+- Added ride creation timeout to avoid infinite loader.
+- Updated ride creation types/context to include `booking_app`.
+- Added `booking_app` column to `public.rides` schema in `complete_database.sql` and a standalone `alteration.sql` migration.
+- Increased home quick-action grid card size and enforced square aspect ratio.
+- Forced quick-action grid to render as 2x2 with wrap + spacing tweaks.
+- Added home search filtering to show matching rides or a "No rides found" empty state.
+- Disabled lazy tab loading and screen detachment to make tab switches feel immediate.
+- Removed unused notifications hook import on home to prevent missing provider error.
+- Wrapped root layout with `NotificationProvider` to satisfy `useNotifications`.
+- Added NotificationProvider to tab layout and hardened NotificationContext for native (no `window`).
+- Guarded live tracking against missing ride id and added safe back navigation.
+- Added `favorite_routes` table and policies to `alteration.sql`.
+- Added Favorites screen and home favorites alerts badge + quick-action card.
+- Moved My Announcements to bottom tab and added Announcement Details screen with ride requests.
+- Prevented GO_BACK warnings by adding safe back fallback in chat and rate-user screens.
+- Added login timeout guard to avoid stuck "Signing In..." state.
+- Added login animation fallback to navigate even if the video fails to load.
+- Reverted login animation to `expo-av` for Expo Go compatibility.
+- Redirected login success directly to Home (skips login-animation route).
+- Swapped deprecated `SafeAreaView` imports to `react-native-safe-area-context` in app screens.
+- Login now navigates directly to Home on successful sign-in and when user is already authenticated.
+- Login now clears loading state when auth session is established to avoid stuck "Signing In".
+- Removed `login-animation` tab entry and now redirect login via root index (`/`)just for now  .

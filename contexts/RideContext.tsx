@@ -65,6 +65,7 @@ export const RideProvider: React.FC<RideProviderProps> = ({ children }) => {
         pickup_location: { latitude: number; longitude: number; address: string };
         dropoff_location: { latitude: number; longitude: number; address: string };
         estimated_fare?: number;
+        booking_app?: string;
         ride_date?: string;
         ride_time?: string;
         available_seats?: number;
@@ -118,6 +119,9 @@ export const RideProvider: React.FC<RideProviderProps> = ({ children }) => {
       }
       if ('notes' in input && input.notes) {
         insertData.notes = input.notes;
+      }
+      if ('booking_app' in input && input.booking_app) {
+        insertData.booking_app = input.booking_app;
       }
 
       const { data, error } = await supabase

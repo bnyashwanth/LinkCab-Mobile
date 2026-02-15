@@ -7,7 +7,6 @@ import {
   TouchableOpacity,
   TextInput,
   Alert,
-  SafeAreaView,
   StatusBar,
   ScrollView,
   RefreshControl,
@@ -18,10 +17,11 @@ import {
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../constants/theme';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../../contexts/AuthContext';
 import { usePayment } from '../../contexts/PaymentContext';
 import { useRide } from '../../contexts/RideContext';
-import { useNotifications } from '../../contexts/NotificationContext';
+import { supabase } from '../../lib/supabase';
 import LinkCabLogo from '../../components/LinkCabLogo';
 
 const categories = [
@@ -35,7 +35,7 @@ const categories = [
 const quickActions = [
   { id: 'create', label: 'Create Ride', icon: 'add-circle-outline', route: '/(app)/create-ride' },
   { id: 'find', label: 'Find Ride', icon: 'search-outline', route: '/(app)/discover' },
-  { id: 'announcements', label: 'My Announcements', icon: 'megaphone-outline', route: '/(app)/announcements' },
+  { id: 'favorites', label: 'Favorites Alerts', icon: 'heart-outline', route: '/(app)/favorites', badgeKey: 'favorites' },
   { id: 'emergency', label: 'Emergency', icon: 'alert-circle-outline', route: '/(app)/emergency' },
 ];
 
@@ -48,6 +48,8 @@ export default function HomeScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [refreshing, setRefreshing] = useState(false);
+  const [favoriteRoutes, setFavoriteRoutes] = useState<any[]>([]);
+  const [favoriteAlerts, setFavoriteAlerts] = useState<any[]>([]);
 
   // Animation values
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -108,6 +110,55 @@ export default function HomeScreen() {
     if (user) fetchAllRides();
   }, []);
 
+  useEffect(() => {
+    if (user) {
+      fetchFavoriteRoutes();
+    } else {
+      setFavoriteRoutes([]);
+      setFavoriteAlerts([]);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (!favoriteRoutes.length) {
+      setFavoriteAlerts([]);
+      return;
+    }
+    const alerts: any[] = [];
+    const normalized = favoriteRoutes.map((fav) => ({
+      ...fav,
+      from_city: (fav.from_city || '').toLowerCase(),
+      to_city: (fav.to_city || '').toLowerCase(),
+    }));
+
+    contextRides.forEach((ride: any) => {
+      const pickup = (ride.pickup_address || '').toLowerCase();
+      const dropoff = (ride.dropoff_address || '').toLowerCase();
+      const match = normalized.find((fav) =>
+        pickup.includes(fav.from_city) && dropoff.includes(fav.to_city)
+      );
+      if (match) {
+        alerts.push({ ride, favorite: match });
+      }
+    });
+    setFavoriteAlerts(alerts);
+  }, [favoriteRoutes, contextRides]);
+
+  const fetchFavoriteRoutes = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('favorite_routes')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (!error) {
+        setFavoriteRoutes(data || []);
+      }
+    } catch {
+      // ignore for now
+    }
+  };
+
   const onRefresh = async () => {
     setRefreshing(true);
     await fetchAllRides();
@@ -141,6 +192,23 @@ export default function HomeScreen() {
 
     router.push(`/(app)/[book-ride]?id=${rideId}`);
   };
+
+  const filteredRides = contextRides.filter((ride: any) => {
+    if (!searchQuery.trim()) return true;
+    const q = searchQuery.trim().toLowerCase();
+    const pickup = (ride.pickup_address || '').toLowerCase();
+    const dropoff = (ride.dropoff_address || '').toLowerCase();
+    const cab = (ride.cab_type || '').toLowerCase();
+    const date = (ride.ride_date || '').toLowerCase();
+    const time = (ride.ride_time || '').toLowerCase();
+    return (
+      pickup.includes(q) ||
+      dropoff.includes(q) ||
+      cab.includes(q) ||
+      date.includes(q) ||
+      time.includes(q)
+    );
+  });
 
   const renderRide = ({ item }: any) => {
     const initials = item.user?.name?.split(' ').map((n: string) => n[0]).join('').toUpperCase() || 'U';
@@ -230,11 +298,12 @@ export default function HomeScreen() {
         <View style={styles.headerRight}>
           <TouchableOpacity style={styles.headerIcon}>
             <Ionicons name="notifications-outline" size={20} color={colors.text.primary} />
+            {favoriteAlerts.length > 0 && (
+              <View style={styles.notificationBadge}>
+                <Text style={styles.badgeText}>{favoriteAlerts.length}</Text>
+              </View>
+            )}
           </TouchableOpacity>
-          <View style={styles.walletContainer}>
-            <Ionicons name="wallet-outline" size={20} color={colors.text.primary} />
-            <Text style={styles.walletText}>₹{wallet?.balance || 0}</Text>
-          </View>
         </View>
       </Animated.View>
 
@@ -312,6 +381,11 @@ export default function HomeScreen() {
                   activeOpacity={0.8}
                   style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}
                 >
+                  {action.badgeKey === 'favorites' && favoriteAlerts.length > 0 && (
+                    <View style={styles.quickActionBadge}>
+                      <Text style={styles.quickActionBadgeText}>{favoriteAlerts.length}</Text>
+                    </View>
+                  )}
                   <Ionicons name={action.icon as any} size={24} color={colors.secondary[500]} />
                   <Text style={styles.quickActionText}>{action.label}</Text>
                 </TouchableOpacity>
@@ -329,7 +403,7 @@ export default function HomeScreen() {
         ]}>
           <Text style={styles.sectionTitle}>Available Rides</Text>
           <FlatList
-            data={contextRides}
+            data={filteredRides}
             renderItem={renderRide}
             keyExtractor={(item) => item.id}
             scrollEnabled={false}
@@ -337,8 +411,12 @@ export default function HomeScreen() {
             ListEmptyComponent={
               <View style={styles.emptyState}>
                 <Ionicons name="car-outline" size={48} color={colors.gray[500]} />
-                <Text style={styles.emptyTitle}>No rides found</Text>
-                <Text style={styles.emptySubtitle}>Try adjusting your search criteria</Text>
+                <Text style={styles.emptyTitle}>
+                  {searchQuery.trim() ? 'No rides found' : 'No rides available'}
+                </Text>
+                <Text style={styles.emptySubtitle}>
+                  {searchQuery.trim() ? 'Try a different search' : 'Try adjusting your search criteria'}
+                </Text>
               </View>
             }
           />
@@ -357,7 +435,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     paddingVertical: 8,
     backgroundColor: colors.background.primary,
     paddingTop: Platform.OS === 'ios' ? 8 : (StatusBar.currentHeight || 0) + 4,
@@ -368,6 +446,7 @@ const styles = StyleSheet.create({
   logoComponent: {
     width: 120,
     height: 36,
+    marginLeft: -10,
   },
   headerRight: {
     flexDirection: 'row',
@@ -390,17 +469,7 @@ const styles = StyleSheet.create({
   },
   badgeText: {
     fontSize: 10,
-    color: colors.text.primary,
-    fontWeight: '600',
-  },
-  walletContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  walletText: {
-    fontSize: 12,
-    color: colors.text.primary,
+    color: colors.background.primary,
     fontWeight: '600',
   },
   greetingSection: {
@@ -443,14 +512,16 @@ const styles = StyleSheet.create({
   quickActions: {
     flexDirection: 'row',
     flexWrap: 'wrap',
+    justifyContent: 'space-between',
     gap: 12,
     padding: 20,
   },
   quickAction: {
     width: '48%',
+    aspectRatio: 1,
     backgroundColor: colors.background.primary,
     borderRadius: 12,
-    padding: 16,
+    padding: 18,
     alignItems: 'center',
     gap: 8,
     shadowColor: '#000',
@@ -458,6 +529,23 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
+  },
+  quickActionBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    backgroundColor: colors.danger[500],
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 5,
+  },
+  quickActionBadgeText: {
+    fontSize: 10,
+    color: colors.background.primary,
+    fontWeight: '700',
   },
   quickActionText: {
     fontSize: 12,

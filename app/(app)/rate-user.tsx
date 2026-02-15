@@ -62,7 +62,11 @@ export default function RateUserScreen() {
 
   useEffect(() => {
     if (!user || !otherUserId || !rideId) {
-      router.back();
+      if (router.canGoBack?.()) {
+        router.back();
+      } else {
+        router.replace('/(app)/home');
+      }
       return;
     }
 
