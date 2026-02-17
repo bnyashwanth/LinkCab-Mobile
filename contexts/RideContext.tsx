@@ -72,6 +72,10 @@ export const RideProvider: React.FC<RideProviderProps> = ({ children }) => {
         cab_type?: string;
         gender_preference?: string;
         notes?: string;
+        note_photo_urls?: string[];
+        creator_small_bags?: number;
+        creator_medium_bags?: number;
+        creator_large_bags?: number;
       }
   ): Promise<{ error: any; data: Ride | null }> => {
     if (!user) {
@@ -120,6 +124,18 @@ export const RideProvider: React.FC<RideProviderProps> = ({ children }) => {
       if ('notes' in input && input.notes) {
         insertData.notes = input.notes;
       }
+      if ('note_photo_urls' in input && input.note_photo_urls?.length) {
+        insertData.note_photo_urls = input.note_photo_urls;
+      }
+      if ('creator_small_bags' in input && input.creator_small_bags != null) {
+        insertData.creator_small_bags = input.creator_small_bags;
+      }
+      if ('creator_medium_bags' in input && input.creator_medium_bags != null) {
+        insertData.creator_medium_bags = input.creator_medium_bags;
+      }
+      if ('creator_large_bags' in input && input.creator_large_bags != null) {
+        insertData.creator_large_bags = input.creator_large_bags;
+      }
       if ('booking_app' in input && input.booking_app) {
         insertData.booking_app = input.booking_app;
       }
@@ -146,7 +162,14 @@ export const RideProvider: React.FC<RideProviderProps> = ({ children }) => {
     }
   };
 
-  const requestRide = async (rideId: string): Promise<{ error: any }> => {
+  const requestRide = async (
+    rideId: string,
+    baggage?: {
+      small?: number;
+      medium?: number;
+      large?: number;
+    }
+  ): Promise<{ error: any }> => {
     if (!user) {
       return { error: new Error('User not authenticated') };
     }
@@ -158,6 +181,9 @@ export const RideProvider: React.FC<RideProviderProps> = ({ children }) => {
           ride_id: rideId,
           passenger_id: user.id,
           status: 'pending',
+          small_bags: baggage?.small ?? 0,
+          medium_bags: baggage?.medium ?? 0,
+          large_bags: baggage?.large ?? 0,
           requested_at: new Date().toISOString(),
         })
         .select();

@@ -83,6 +83,10 @@ CREATE TABLE IF NOT EXISTS public.rides (
   cab_type TEXT DEFAULT 'sedan',
   gender_preference TEXT DEFAULT 'any',
   notes TEXT,
+  note_photo_urls TEXT[] DEFAULT '{}',
+  creator_small_bags INTEGER DEFAULT 0,
+  creator_medium_bags INTEGER DEFAULT 0,
+  creator_large_bags INTEGER DEFAULT 0,
   status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'accepted', 'in_progress', 'completed', 'cancelled')),
   fare DECIMAL NOT NULL DEFAULT 0,
   currency TEXT NOT NULL DEFAULT 'INR',
@@ -112,6 +116,10 @@ ALTER TABLE public.rides ADD COLUMN IF NOT EXISTS available_seats INTEGER DEFAUL
 ALTER TABLE public.rides ADD COLUMN IF NOT EXISTS cab_type TEXT DEFAULT 'sedan';
 ALTER TABLE public.rides ADD COLUMN IF NOT EXISTS gender_preference TEXT DEFAULT 'any';
 ALTER TABLE public.rides ADD COLUMN IF NOT EXISTS notes TEXT;
+ALTER TABLE public.rides ADD COLUMN IF NOT EXISTS note_photo_urls TEXT[] DEFAULT '{}';
+ALTER TABLE public.rides ADD COLUMN IF NOT EXISTS creator_small_bags INTEGER DEFAULT 0;
+ALTER TABLE public.rides ADD COLUMN IF NOT EXISTS creator_medium_bags INTEGER DEFAULT 0;
+ALTER TABLE public.rides ADD COLUMN IF NOT EXISTS creator_large_bags INTEGER DEFAULT 0;
 
 -- ============================================
 -- Ride Requests table
@@ -121,6 +129,9 @@ create table if not exists ride_requests (
   ride_id uuid references rides(id) not null,
   passenger_id uuid references auth.users not null,
   status text not null default 'pending',
+  small_bags integer not null default 0,
+  medium_bags integer not null default 0,
+  large_bags integer not null default 0,
   requested_at timestamp with time zone default timezone('utc'::text, now()) not null,
   responded_at timestamp with time zone,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null

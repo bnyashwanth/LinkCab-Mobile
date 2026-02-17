@@ -61,6 +61,11 @@ export interface Ride {
     verified?: boolean;
   };
   booking_app?: string;
+  notes?: string;
+  note_photo_urls?: string[];
+  creator_small_bags?: number;
+  creator_medium_bags?: number;
+  creator_large_bags?: number;
 }
 
 export interface Location {
@@ -101,9 +106,20 @@ export interface RideContextType {
         cab_type?: string;
         gender_preference?: string;
         notes?: string;
+        note_photo_urls?: string[];
+        creator_small_bags?: number;
+        creator_medium_bags?: number;
+        creator_large_bags?: number;
       }
   ) => Promise<{ error: any; data: Ride | null }>;
-  requestRide: (rideId: string) => Promise<{ error: any }>;
+  requestRide: (
+    rideId: string,
+    baggage?: {
+      small?: number;
+      medium?: number;
+      large?: number;
+    }
+  ) => Promise<{ error: any }>;
   acceptRide: (rideId: string) => Promise<{ error: any }>;
   completeRide: (rideId: string) => Promise<{ error: any }>;
   cancelRide: (rideId: string) => Promise<{ error: any }>;

@@ -9,13 +9,13 @@ import {
   ActivityIndicator,
   ScrollView,
   Animated,
+  Image,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRide } from '@/contexts/RideContext';
 import { usePayment } from '@/contexts/PaymentContext';
 import { Ionicons } from '@expo/vector-icons';
-import { colors } from '@/constants/theme';
 import { getValidRideId } from '@/utils/rideIdUtils';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -37,6 +37,11 @@ interface Ride {
   fare?: number;
   estimated_fare?: number;
   booking_app?: string;
+  notes?: string;
+  note_photo_urls?: string[];
+  creator_small_bags?: number;
+  creator_medium_bags?: number;
+  creator_large_bags?: number;
   currency?: string;
   payment_method?: string;
   payment_status?: string;
@@ -51,16 +56,16 @@ interface Ride {
 
 const customColors = {
   brand: {
-    primary: '#6366F1',
-    secondary: '#8B5CF6',
+    primary: '#F5C542',
+    secondary: '#1F2937',
   },
   background: {
-    primary: '#FFFFFF',
-    secondary: '#F9FAFB',
+    primary: '#FCFCFA',
+    secondary: '#F3F2EE',
   },
   text: {
-    primary: '#111827',
-    secondary: '#6B7280',
+    primary: '#1B1D21',
+    secondary: '#61646B',
   },
   gray: {
     50: '#F9FAFB',
@@ -142,6 +147,11 @@ export default function BookRideScreen() {
   const [submitting, setSubmitting] = useState(false);
   const [ride, setRide] = useState<Ride | null>(null);
   const [buttonScale] = useState(new Animated.Value(1));
+  const [requesterBags, setRequesterBags] = useState({
+    small: 0,
+    medium: 0,
+    large: 0,
+  });
 
   useEffect(() => {
     setLoading(true);
@@ -165,6 +175,13 @@ export default function BookRideScreen() {
       useNativeDriver: true,
       friction: 5,
     }).start();
+  };
+
+  const adjustBagCount = (size: 'small' | 'medium' | 'large', delta: number) => {
+    setRequesterBags((prev) => ({
+      ...prev,
+      [size]: Math.max(0, prev[size] + delta),
+    }));
   };
 
   const handleRequestRide = async () => {
@@ -214,7 +231,7 @@ export default function BookRideScreen() {
       }
 
       // Send ride request
-      const { error: requestError } = await requestRide(mappedId);
+      const { error: requestError } = await requestRide(mappedId, requesterBags);
 
       if (requestError) {
         Alert.alert('Request Failed', requestError.message || 'Failed to send ride request');
@@ -266,6 +283,10 @@ export default function BookRideScreen() {
   const seatCount = ride.available_seats && ride.available_seats > 0 ? ride.available_seats : 1;
   const perPersonFare = totalFare ? totalFare / seatCount : null;
   const bookingApp = ride.booking_app;
+  const creatorSmallBags = ride.creator_small_bags ?? 0;
+  const creatorMediumBags = ride.creator_medium_bags ?? 0;
+  const creatorLargeBags = ride.creator_large_bags ?? 0;
+  const creatorBagsTotal = creatorSmallBags + creatorMediumBags + creatorLargeBags;
 
   return (
     <SafeAreaView style={styles.container}>
@@ -375,6 +396,33 @@ export default function BookRideScreen() {
           )}
         </View>
 
+        <View style={styles.luggageSection}>
+          <Text style={styles.luggageTitle}>Creator Luggage</Text>
+          {creatorBagsTotal > 0 ? (
+            <View style={styles.luggageRow}>
+              <Text style={styles.luggageChip}>Small {creatorSmallBags}</Text>
+              <Text style={styles.luggageChip}>Medium {creatorMediumBags}</Text>
+              <Text style={styles.luggageChip}>Large {creatorLargeBags}</Text>
+            </View>
+          ) : (
+            <Text style={styles.luggageEmpty}>No bags mentioned</Text>
+          )}
+        </View>
+
+        {(ride.notes || (ride.note_photo_urls && ride.note_photo_urls.length > 0)) && (
+          <View style={styles.notesSection}>
+            <Text style={styles.notesTitle}>Notes</Text>
+            {ride.notes ? <Text style={styles.notesText}>{ride.notes}</Text> : null}
+            {ride.note_photo_urls && ride.note_photo_urls.length > 0 && (
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.notePhotoRow}>
+                {ride.note_photo_urls.map((photoUrl) => (
+                  <Image key={photoUrl} source={{ uri: photoUrl }} style={styles.notePhoto} />
+                ))}
+              </ScrollView>
+            )}
+          </View>
+        )}
+
         {/* Fare Info */}
         {ride.fare && (
           <View style={styles.fareSection}>
@@ -396,6 +444,42 @@ export default function BookRideScreen() {
             </Text>
           </View>
         )}
+
+        <View style={styles.requesterBagsSection}>
+          <Text style={styles.requesterBagsTitle}>Your Bags for This Request</Text>
+          <View style={styles.requesterBagGrid}>
+            {[
+              { key: 'small', label: 'Small', icon: 'briefcase-outline' },
+              { key: 'medium', label: 'Medium', icon: 'bag-handle-outline' },
+              { key: 'large', label: 'Large', icon: 'cube-outline' },
+            ].map((item) => (
+              <View key={item.key} style={styles.requesterBagCard}>
+                <Ionicons name={item.icon as any} size={16} color={customColors.text.secondary} />
+                <Text style={styles.requesterBagLabel}>{item.label}</Text>
+                <View style={styles.requesterBagCounter}>
+                  <TouchableOpacity
+                    style={styles.requesterBagBtn}
+                    onPress={() => adjustBagCount(item.key as 'small' | 'medium' | 'large', -1)}
+                  >
+                    <Ionicons name="remove" size={14} color={customColors.text.primary} />
+                  </TouchableOpacity>
+                  <Text style={styles.requesterBagValue}>
+                    {requesterBags[item.key as 'small' | 'medium' | 'large']}
+                  </Text>
+                  <TouchableOpacity
+                    style={styles.requesterBagBtn}
+                    onPress={() => adjustBagCount(item.key as 'small' | 'medium' | 'large', 1)}
+                  >
+                    <Ionicons name="add" size={14} color={customColors.text.primary} />
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ))}
+          </View>
+          <Text style={styles.requesterBagHint}>
+            Creator will see this before accepting your request.
+          </Text>
+        </View>
 
         {/* Request Button */}
         <Animated.View style={[{ transform: [{ scale: buttonScale }] }, styles.buttonContainer]}>
@@ -672,6 +756,127 @@ const styles = StyleSheet.create({
     color: customColors.text.secondary,
     marginTop: 4,
   },
+  luggageSection: {
+    backgroundColor: customColors.background.secondary,
+    marginHorizontal: 20,
+    borderRadius: 16,
+    padding: 16,
+    marginTop: 12,
+  },
+  luggageTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: customColors.text.primary,
+    marginBottom: 8,
+  },
+  luggageRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  luggageChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+    backgroundColor: customColors.background.primary,
+    borderWidth: 1,
+    borderColor: customColors.gray[200],
+    fontSize: 12,
+    fontWeight: '600',
+    color: customColors.text.primary,
+  },
+  luggageEmpty: {
+    fontSize: 12,
+    color: customColors.text.secondary,
+  },
+  notesSection: {
+    backgroundColor: customColors.background.secondary,
+    marginHorizontal: 20,
+    borderRadius: 16,
+    padding: 16,
+    marginTop: 12,
+  },
+  notesTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: customColors.text.primary,
+    marginBottom: 8,
+  },
+  notesText: {
+    fontSize: 13,
+    lineHeight: 19,
+    color: customColors.text.secondary,
+  },
+  notePhotoRow: {
+    gap: 10,
+    marginTop: 10,
+  },
+  notePhoto: {
+    width: 92,
+    height: 92,
+    borderRadius: 12,
+    backgroundColor: customColors.gray[200],
+  },
+  requesterBagsSection: {
+    backgroundColor: customColors.background.secondary,
+    marginHorizontal: 20,
+    borderRadius: 16,
+    padding: 16,
+    marginTop: 12,
+  },
+  requesterBagsTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: customColors.text.primary,
+    marginBottom: 10,
+  },
+  requesterBagGrid: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  requesterBagCard: {
+    flex: 1,
+    backgroundColor: customColors.background.primary,
+    borderRadius: 12,
+    padding: 10,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: customColors.gray[200],
+  },
+  requesterBagLabel: {
+    marginTop: 4,
+    fontSize: 12,
+    fontWeight: '600',
+    color: customColors.text.secondary,
+  },
+  requesterBagCounter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 8,
+  },
+  requesterBagBtn: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: customColors.gray[100],
+    borderWidth: 1,
+    borderColor: customColors.gray[300],
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  requesterBagValue: {
+    minWidth: 14,
+    textAlign: 'center',
+    fontSize: 14,
+    fontWeight: '700',
+    color: customColors.text.primary,
+  },
+  requesterBagHint: {
+    marginTop: 10,
+    fontSize: 12,
+    color: customColors.text.secondary,
+  },
   buttonContainer: {
     paddingHorizontal: 20,
     paddingVertical: 24,
@@ -690,7 +895,7 @@ const styles = StyleSheet.create({
   requestButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: customColors.background.primary,
+    color: customColors.text.primary,
     marginLeft: 8,
   },
   errorContainer: {
@@ -719,7 +924,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   backButtonText: {
-    color: customColors.background.primary,
+    color: customColors.text.primary,
     fontSize: 16,
     fontWeight: '600',
   },

@@ -25,3 +25,19 @@
 - Login now navigates directly to Home on successful sign-in and when user is already authenticated.
 - Login now clears loading state when auth session is established to avoid stuck "Signing In".
 - Removed `login-animation` tab entry and now redirect login via root index (`/`)just for now  .
+
+## February 16, 2026
+
+- Enhanced ride details UI for `app/(app)/[book-ride].tsx` with a cleaner minimal layout and better section hierarchy.
+- Added creator luggage visibility on ride details: `small`, `medium`, and `large` bag counts.
+- Added requester luggage selector on ride request flow and passed those counts into `ride_requests`.
+- Extended `RideContext.requestRide` to persist requester bag counts (`small_bags`, `medium_bags`, `large_bags`).
+- Extended ride creation payload/types to support creator bag counts and optional note photo URLs.
+- Added optional ride note photos in create ride with upload + preview + remove before submit.
+- Added both camera and gallery options for note-photo attachment in create ride.
+- Upgraded `app/(app)/announcement-details.tsx` (my ride details) with improved spacing, cleaner card rhythm, and better readability.
+- Added creator-side request handling in announcement details: view requester bag sizes and accept/reject per request.
+- Added schema support for these features:
+  - `rides`: `note_photo_urls`, `creator_small_bags`, `creator_medium_bags`, `creator_large_bags`
+  - `ride_requests`: `small_bags`, `medium_bags`, `large_bags`
+- Added migration: `supabase/migrations/005_add_baggage_and_note_photos.sql`.

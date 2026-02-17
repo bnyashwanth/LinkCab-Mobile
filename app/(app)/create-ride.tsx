@@ -13,6 +13,7 @@ import {
   Dimensions,
   StatusBar,
   ActivityIndicator,
+  Image,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
@@ -20,6 +21,9 @@ import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useRide } from '@/contexts/RideContext';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import * as ImagePicker from 'expo-image-picker';
+import { decode } from 'base64-arraybuffer';
+import { supabase } from '@/lib/supabase';
 
 const { width, height } = Dimensions.get('window');
 
@@ -113,6 +117,11 @@ export default function CreateRideScreen() {
   const [petsPreference, setPetsPreference] = useState('any');
   const [vibePreference, setVibePreference] = useState('any');
   const [notes, setNotes] = useState('');
+  const [creatorSmallBags, setCreatorSmallBags] = useState(0);
+  const [creatorMediumBags, setCreatorMediumBags] = useState(0);
+  const [creatorLargeBags, setCreatorLargeBags] = useState(0);
+  const [notePhotoUrls, setNotePhotoUrls] = useState<string[]>([]);
+  const [uploadingPhotos, setUploadingPhotos] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Date/Time State
@@ -180,6 +189,122 @@ export default function CreateRideScreen() {
     loc.address.toLowerCase().includes(locationSearch.toLowerCase())
   );
 
+  const adjustBagCount = (
+    setter: React.Dispatch<React.SetStateAction<number>>,
+    delta: number
+  ) => {
+    setter((prev) => Math.max(0, prev + delta));
+  };
+
+  const uploadRideNotePhoto = async (base64: string, uri: string) => {
+    const fileExt = uri.split('.').pop()?.toLowerCase() ?? 'jpg';
+    const filePath = `${user?.id || 'anonymous'}/rides/${Date.now()}-${Math.random()
+      .toString(36)
+      .slice(2)}.${fileExt}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from('ride-notes')
+      .upload(filePath, decode(base64), {
+        contentType: `image/${fileExt}`,
+        upsert: false,
+      });
+
+    if (uploadError) {
+      throw uploadError;
+    }
+
+    const { data } = supabase.storage
+      .from('ride-notes')
+      .getPublicUrl(filePath);
+
+    return data.publicUrl;
+  };
+
+  const processPickedAssets = async (assets: ImagePicker.ImagePickerAsset[]) => {
+    if (!assets.length) {
+      return;
+    }
+    setUploadingPhotos(true);
+    try {
+      const uploadedUrls: string[] = [];
+      for (const asset of assets.slice(0, Math.max(0, 4 - notePhotoUrls.length))) {
+        if (!asset.base64 || !asset.uri) {
+          continue;
+        }
+        const publicUrl = await uploadRideNotePhoto(asset.base64, asset.uri);
+        uploadedUrls.push(publicUrl);
+      }
+      if (uploadedUrls.length > 0) {
+        setNotePhotoUrls((prev) => [...prev, ...uploadedUrls].slice(0, 4));
+      }
+    } catch (error: any) {
+      Alert.alert('Upload Failed', error?.message || 'Could not upload note photos right now.');
+    } finally {
+      setUploadingPhotos(false);
+    }
+  };
+
+  const pickNotePhotosFromGallery = async () => {
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission Required', 'Please allow gallery access to add note photos.');
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsMultipleSelection: true,
+        selectionLimit: Math.max(1, 4 - notePhotoUrls.length),
+        quality: 0.6,
+        base64: true,
+      });
+
+      if (result.canceled) {
+        return;
+      }
+      await processPickedAssets(result.assets);
+    } catch (error: any) {
+      Alert.alert('Error', error?.message || 'Could not open gallery.');
+    }
+  };
+
+  const takeNotePhotoFromCamera = async () => {
+    try {
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission Required', 'Please allow camera access to capture note photos.');
+        return;
+      }
+
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        quality: 0.6,
+        base64: true,
+      });
+
+      if (result.canceled) {
+        return;
+      }
+      await processPickedAssets(result.assets);
+    } catch (error: any) {
+      Alert.alert('Error', error?.message || 'Could not open camera.');
+    }
+  };
+
+  const handleAddNotePhotos = () => {
+    Alert.alert('Add Note Photo', 'Choose photo source', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Camera', onPress: takeNotePhotoFromCamera },
+      { text: 'Gallery', onPress: pickNotePhotosFromGallery },
+    ]);
+  };
+
+  const removeNotePhoto = (url: string) => {
+    setNotePhotoUrls((prev) => prev.filter((item) => item !== url));
+  };
+
   const handleCreateRide = async () => {
     if (!pickup || !dropoff) {
       Alert.alert('Missing Information', 'Please select both pickup and dropoff locations');
@@ -235,6 +360,10 @@ export default function CreateRideScreen() {
         booking_app: resolvedBookingApp || undefined,
         gender_preference: genderPreference,
         notes: combinedNotes || undefined,
+        note_photo_urls: notePhotoUrls.length ? notePhotoUrls : undefined,
+        creator_small_bags: creatorSmallBags,
+        creator_medium_bags: creatorMediumBags,
+        creator_large_bags: creatorLargeBags,
       });
       const result = await Promise.race([
         createPromise,
@@ -583,9 +712,74 @@ export default function CreateRideScreen() {
           </View>
         </View>
 
+        {/* Creator Bags Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Your Bags</Text>
+          <Text style={styles.sectionSubtitle}>Let riders know your current luggage load</Text>
+          <View style={styles.bagCard}>
+            {[
+              { label: 'Small', icon: 'briefcase-outline', value: creatorSmallBags, setter: setCreatorSmallBags },
+              { label: 'Medium', icon: 'bag-handle-outline', value: creatorMediumBags, setter: setCreatorMediumBags },
+              { label: 'Large', icon: 'cube-outline', value: creatorLargeBags, setter: setCreatorLargeBags },
+            ].map((bag) => (
+              <View key={bag.label} style={styles.bagRow}>
+                <View style={styles.bagLabelWrap}>
+                  <Ionicons name={bag.icon as any} size={18} color={BRAND.black} />
+                  <Text style={styles.bagLabel}>{bag.label}</Text>
+                </View>
+                <View style={styles.bagCounter}>
+                  <TouchableOpacity
+                    style={styles.bagCounterBtn}
+                    onPress={() => adjustBagCount(bag.setter, -1)}
+                  >
+                    <Ionicons name="remove" size={16} color={BRAND.black} />
+                  </TouchableOpacity>
+                  <Text style={styles.bagCounterValue}>{bag.value}</Text>
+                  <TouchableOpacity
+                    style={styles.bagCounterBtn}
+                    onPress={() => adjustBagCount(bag.setter, 1)}
+                  >
+                    <Ionicons name="add" size={16} color={BRAND.black} />
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ))}
+          </View>
+        </View>
+
         {/* Notes Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Additional Notes (Optional)</Text>
+          <View style={styles.photoActions}>
+            <TouchableOpacity
+              style={styles.addPhotoButton}
+              onPress={handleAddNotePhotos}
+              disabled={uploadingPhotos || notePhotoUrls.length >= 4}
+            >
+              {uploadingPhotos ? (
+                <ActivityIndicator size="small" color={BRAND.black} />
+              ) : (
+                <>
+                  <Ionicons name="images-outline" size={16} color={BRAND.black} />
+                  <Text style={styles.addPhotoButtonText}>
+                    {notePhotoUrls.length > 0 ? `Add More Photos (${notePhotoUrls.length}/4)` : 'Add Note Photos'}
+                  </Text>
+                </>
+              )}
+            </TouchableOpacity>
+          </View>
+          {notePhotoUrls.length > 0 && (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.photoPreviewRow}>
+              {notePhotoUrls.map((url) => (
+                <View key={url} style={styles.photoPreviewItem}>
+                  <Image source={{ uri: url }} style={styles.photoPreviewImage} />
+                  <TouchableOpacity style={styles.photoRemoveBtn} onPress={() => removeNotePhoto(url)}>
+                    <Ionicons name="close" size={12} color={BRAND.white} />
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </ScrollView>
+          )}
           <TextInput
             style={styles.notesInput}
             placeholder="E.g., Luggage space needed, pet-friendly, etc."
@@ -600,12 +794,12 @@ export default function CreateRideScreen() {
 
         {/* Create Button */}
         <TouchableOpacity
-          style={[styles.createButton, isSubmitting && styles.createButtonDisabled]}
+          style={[styles.createButton, (isSubmitting || uploadingPhotos) && styles.createButtonDisabled]}
           onPress={handleCreateRide}
-          disabled={isSubmitting}
+          disabled={isSubmitting || uploadingPhotos}
           activeOpacity={0.9}
         >
-          {isSubmitting ? (
+          {isSubmitting || uploadingPhotos ? (
             <ActivityIndicator size="small" color={BRAND.black} />
           ) : (
             <>
@@ -784,6 +978,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     color: BRAND.black,
+    marginBottom: 12,
+  },
+  sectionSubtitle: {
+    fontSize: 12,
+    color: BRAND.gray,
+    marginTop: -6,
     marginBottom: 12,
   },
   subSectionTitle: {
@@ -1095,7 +1295,99 @@ const styles = StyleSheet.create({
     color: BRAND.black,
   },
 
+  // Bags
+  bagCard: {
+    backgroundColor: BRAND.white,
+    borderRadius: 14,
+    borderWidth: 2,
+    borderColor: BRAND.grayMedium,
+    padding: 12,
+    gap: 10,
+  },
+  bagRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  bagLabelWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  bagLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: BRAND.black,
+  },
+  bagCounter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  bagCounterBtn: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: BRAND.yellowLight,
+    borderWidth: 1,
+    borderColor: BRAND.yellow,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bagCounterValue: {
+    minWidth: 20,
+    textAlign: 'center',
+    fontSize: 16,
+    fontWeight: '700',
+    color: BRAND.black,
+  },
+
   // Notes
+  photoActions: {
+    marginBottom: 10,
+  },
+  addPhotoButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: BRAND.yellowLight,
+    borderRadius: 12,
+    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: BRAND.yellow,
+  },
+  addPhotoButtonText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: BRAND.black,
+  },
+  photoPreviewRow: {
+    gap: 10,
+    paddingBottom: 10,
+  },
+  photoPreviewItem: {
+    width: 84,
+    height: 84,
+    borderRadius: 12,
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  photoPreviewImage: {
+    width: '100%',
+    height: '100%',
+  },
+  photoRemoveBtn: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: 'rgba(0,0,0,0.75)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   notesInput: {
     backgroundColor: BRAND.white,
     borderRadius: 14,

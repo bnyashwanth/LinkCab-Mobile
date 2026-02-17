@@ -7,6 +7,9 @@ import {
   StatusBar,
   FlatList,
   Alert,
+  ActivityIndicator,
+  Image,
+  ScrollView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -16,12 +19,15 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 interface RideRequest {
   id: string;
-  status: string;
+  status: 'pending' | 'accepted' | 'rejected' | string;
   requested_at: string;
+  responded_at?: string | null;
   passenger_id?: string;
   name?: string;
   phone?: string;
-  isDemo?: boolean;
+  small_bags?: number;
+  medium_bags?: number;
+  large_bags?: number;
 }
 
 export default function AnnouncementDetailsScreen() {
@@ -30,29 +36,11 @@ export default function AnnouncementDetailsScreen() {
   const [ride, setRide] = useState<any>(null);
   const [requests, setRequests] = useState<RideRequest[]>([]);
   const [loading, setLoading] = useState(true);
+  const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchDetails();
   }, [id]);
-
-  const demoRequests: RideRequest[] = [
-    {
-      id: 'demo-1',
-      status: 'pending',
-      requested_at: new Date().toISOString(),
-      name: 'Rahul S',
-      phone: '+91 98XXXXXX21',
-      isDemo: true,
-    },
-    {
-      id: 'demo-2',
-      status: 'accepted',
-      requested_at: new Date(Date.now() - 3600 * 1000).toISOString(),
-      name: 'Ayesha K',
-      phone: '+91 97XXXXXX84',
-      isDemo: true,
-    },
-  ];
 
   const fetchDetails = async () => {
     if (!id) {
@@ -69,14 +57,39 @@ export default function AnnouncementDetailsScreen() {
       if (rideError) throw rideError;
       setRide(rideData);
 
-      const { data: reqData } = await supabase
+      const { data: reqData, error: reqError } = await supabase
         .from('ride_requests')
-        .select('id,status,requested_at,passenger_id')
+        .select('id,status,requested_at,responded_at,passenger_id,small_bags,medium_bags,large_bags')
         .eq('ride_id', id as string)
         .order('requested_at', { ascending: false });
 
-      const supabaseRequests = (reqData || []) as RideRequest[];
-      setRequests([...supabaseRequests, ...demoRequests]);
+      if (reqError) throw reqError;
+
+      const mappedRequests = (reqData || []) as RideRequest[];
+      const passengerIds = Array.from(
+        new Set(mappedRequests.map((req) => req.passenger_id).filter(Boolean))
+      ) as string[];
+
+      let profileById: Record<string, { full_name?: string | null; phone?: string | null }> = {};
+      if (passengerIds.length > 0) {
+        const { data: profilesData } = await supabase
+          .from('profiles')
+          .select('id,full_name,phone')
+          .in('id', passengerIds);
+
+        profileById = (profilesData || []).reduce((acc: any, profile: any) => {
+          acc[profile.id] = profile;
+          return acc;
+        }, {});
+      }
+
+      setRequests(
+        mappedRequests.map((request) => ({
+          ...request,
+          name: profileById[request.passenger_id || '']?.full_name || undefined,
+          phone: profileById[request.passenger_id || '']?.phone || undefined,
+        }))
+      );
     } catch (error) {
       console.error('Error loading announcement details:', error);
       Alert.alert('Error', 'Could not load announcement details');
@@ -85,9 +98,56 @@ export default function AnnouncementDetailsScreen() {
     }
   };
 
+  const updateRequestStatus = async (
+    requestId: string,
+    status: 'accepted' | 'rejected'
+  ) => {
+    setActionLoadingId(requestId);
+    try {
+      const { error: updateError } = await supabase
+        .from('ride_requests')
+        .update({
+          status,
+          responded_at: new Date().toISOString(),
+        })
+        .eq('id', requestId);
+
+      if (updateError) throw updateError;
+
+      if (status === 'accepted') {
+        await supabase
+          .from('rides')
+          .update({ status: 'accepted' })
+          .eq('id', id as string)
+          .eq('status', 'pending');
+      }
+
+      await fetchDetails();
+    } catch (error: any) {
+      Alert.alert('Update Failed', error?.message || 'Could not update this request.');
+    } finally {
+      setActionLoadingId(null);
+    }
+  };
+
   const formatTime = (iso?: string) => {
     if (!iso) return '';
-    return new Date(iso).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
+    return new Date(iso).toLocaleString('en-IN', {
+      day: 'numeric',
+      month: 'short',
+      hour: 'numeric',
+      minute: '2-digit',
+    });
+  };
+
+  const getStatusStyle = (status: string) => {
+    if (status === 'accepted') {
+      return styles.statusAccepted;
+    }
+    if (status === 'rejected') {
+      return styles.statusRejected;
+    }
+    return styles.statusPending;
   };
 
   return (
@@ -98,72 +158,125 @@ export default function AnnouncementDetailsScreen() {
         <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={24} color={colors.text.primary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Announcement Details</Text>
+        <Text style={styles.headerTitle}>Ride Details</Text>
         <View style={styles.placeholder} />
       </View>
 
       {loading ? (
         <View style={styles.loadingState}>
+          <ActivityIndicator size="large" color={colors.primary[500]} />
           <Text style={styles.loadingText}>Loading details...</Text>
         </View>
       ) : (
-        <>
-          {ride && (
-            <View style={styles.rideCard}>
-              <Text style={styles.rideTitle}>{ride.pickup_address} → {ride.dropoff_address}</Text>
-              <View style={styles.rideMetaRow}>
-                <View style={styles.metaItem}>
-                  <Ionicons name="calendar-outline" size={14} color={colors.gray[500]} />
+        <FlatList
+          data={requests}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.list}
+          showsVerticalScrollIndicator={false}
+          ListFooterComponent={<View style={styles.listFooter} />}
+          ListHeaderComponent={
+            ride ? (
+              <View style={styles.rideCard}>
+                <Text style={styles.rideTitle}>{ride.pickup_address} to {ride.dropoff_address}</Text>
+                <View style={styles.rideMetaRow}>
                   <Text style={styles.metaText}>{ride.ride_date || 'Date TBD'}</Text>
-                </View>
-                <View style={styles.metaItem}>
-                  <Ionicons name="time-outline" size={14} color={colors.gray[500]} />
                   <Text style={styles.metaText}>{ride.ride_time || 'Time TBD'}</Text>
-                </View>
-                <View style={styles.metaItem}>
-                  <Ionicons name="people-outline" size={14} color={colors.gray[500]} />
                   <Text style={styles.metaText}>{ride.available_seats ?? 1} seats</Text>
                 </View>
+                <View style={styles.rideMetaRow}>
+                  <Text style={styles.metaText}>Fare: INR {ride.fare ?? ride.estimated_fare ?? '--'}</Text>
+                  {ride.booking_app ? <Text style={styles.metaText}>Booked via {ride.booking_app}</Text> : null}
+                </View>
+
+                <View style={styles.subSection}>
+                  <Text style={styles.subTitle}>Your Luggage</Text>
+                  <View style={styles.chipsRow}>
+                    <Text style={styles.chip}>Small {ride.creator_small_bags ?? 0}</Text>
+                    <Text style={styles.chip}>Medium {ride.creator_medium_bags ?? 0}</Text>
+                    <Text style={styles.chip}>Large {ride.creator_large_bags ?? 0}</Text>
+                  </View>
+                </View>
+
+                {(ride.notes || (ride.note_photo_urls && ride.note_photo_urls.length > 0)) && (
+                  <View style={styles.subSection}>
+                    <Text style={styles.subTitle}>Notes</Text>
+                    {ride.notes ? <Text style={styles.notesText}>{ride.notes}</Text> : null}
+                    {ride.note_photo_urls && ride.note_photo_urls.length > 0 ? (
+                      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.photoRow}>
+                        {ride.note_photo_urls.map((url: string) => (
+                          <Image key={url} source={{ uri: url }} style={styles.noteImage} />
+                        ))}
+                      </ScrollView>
+                    ) : null}
+                  </View>
+                )}
+
+                <View style={styles.sectionHeader}>
+                  <Text style={styles.sectionTitle}>Requests</Text>
+                  <Text style={styles.sectionCount}>{requests.length}</Text>
+                </View>
               </View>
+            ) : null
+          }
+          ListEmptyComponent={
+            <View style={styles.emptyState}>
+              <Ionicons name="people-outline" size={48} color={colors.gray[400]} />
+              <Text style={styles.emptyTitle}>No requests yet</Text>
+              <Text style={styles.emptySubtitle}>You will see requests here as they arrive</Text>
             </View>
-          )}
-
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Ride Requests</Text>
-            <Text style={styles.sectionCount}>{requests.length}</Text>
-          </View>
-
-          <FlatList
-            data={requests}
-            keyExtractor={(item) => item.id}
-            contentContainerStyle={styles.list}
-            ListEmptyComponent={
-              <View style={styles.emptyState}>
-                <Ionicons name="people-outline" size={48} color={colors.gray[400]} />
-                <Text style={styles.emptyTitle}>No requests yet</Text>
-                <Text style={styles.emptySubtitle}>You will see requests here as they arrive</Text>
-              </View>
-            }
-            renderItem={({ item }) => (
+          }
+          renderItem={({ item }) => {
+            const small = item.small_bags ?? 0;
+            const medium = item.medium_bags ?? 0;
+            const large = item.large_bags ?? 0;
+            return (
               <View style={styles.requestCard}>
-                <View style={styles.requestInfo}>
-                  <Text style={styles.requestName}>
-                    {item.name || `Passenger ${item.passenger_id?.slice(0, 6) || 'Unknown'}`}
-                  </Text>
-                  <Text style={styles.requestMeta}>
-                    {item.phone || 'Phone hidden'} · {formatTime(item.requested_at)}
-                  </Text>
+                <View style={styles.requestTop}>
+                  <View style={styles.requestInfo}>
+                    <Text style={styles.requestName}>
+                      {item.name || `Passenger ${item.passenger_id?.slice(0, 6) || 'Unknown'}`}
+                    </Text>
+                    <Text style={styles.requestMeta}>
+                      {item.phone || 'Phone hidden'} | {formatTime(item.requested_at)}
+                    </Text>
+                  </View>
+                  <View style={[styles.statusPill, getStatusStyle(item.status)]}>
+                    <Text style={styles.statusText}>{item.status}</Text>
+                  </View>
                 </View>
-                <View style={[
-                  styles.statusPill,
-                  item.status === 'accepted' ? styles.statusAccepted : styles.statusPending
-                ]}>
-                  <Text style={styles.statusText}>{item.status}</Text>
+
+                <View style={styles.chipsRow}>
+                  <Text style={styles.chip}>Small {small}</Text>
+                  <Text style={styles.chip}>Medium {medium}</Text>
+                  <Text style={styles.chip}>Large {large}</Text>
                 </View>
+
+                {item.status === 'pending' && (
+                  <View style={styles.actionsRow}>
+                    <TouchableOpacity
+                      style={[styles.actionBtn, styles.rejectBtn]}
+                      onPress={() => updateRequestStatus(item.id, 'rejected')}
+                      disabled={actionLoadingId === item.id}
+                    >
+                      <Text style={styles.rejectBtnText}>Reject</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.actionBtn, styles.acceptBtn]}
+                      onPress={() => updateRequestStatus(item.id, 'accepted')}
+                      disabled={actionLoadingId === item.id}
+                    >
+                      {actionLoadingId === item.id ? (
+                        <ActivityIndicator size="small" color={colors.text.primary} />
+                      ) : (
+                        <Text style={styles.acceptBtnText}>Accept</Text>
+                      )}
+                    </TouchableOpacity>
+                  </View>
+                )}
               </View>
-            )}
-          />
-        </>
+            );
+          }}
+        />
       )}
     </SafeAreaView>
   );
@@ -172,20 +285,22 @@ export default function AnnouncementDetailsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.gray[100],
+    backgroundColor: '#F6F6F4',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    backgroundColor: colors.background.primary,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: colors.gray[200],
   },
   backBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 42,
+    height: 42,
+    borderRadius: 21,
     backgroundColor: colors.gray[100],
     justifyContent: 'center',
     alignItems: 'center',
@@ -194,57 +309,93 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
     color: colors.text.primary,
-    flex: 1,
-    textAlign: 'center',
   },
   placeholder: {
-    width: 44,
+    width: 42,
   },
   loadingState: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 10,
   },
   loadingText: {
     fontSize: 14,
     color: colors.gray[500],
   },
+  list: {
+    paddingHorizontal: 16,
+    paddingTop: 14,
+    paddingBottom: 6,
+    gap: 12,
+  },
+  listFooter: {
+    height: 12,
+  },
   rideCard: {
-    backgroundColor: colors.background.primary,
-    margin: 20,
-    borderRadius: 16,
-    padding: 16,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 18,
+    padding: 18,
     borderWidth: 1,
     borderColor: colors.gray[200],
+    marginBottom: 10,
   },
   rideTitle: {
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: '700',
     color: colors.text.primary,
-    marginBottom: 10,
+    lineHeight: 24,
+    marginBottom: 12,
   },
   rideMetaRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  metaItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
+    flexWrap: 'wrap',
+    gap: 10,
+    marginBottom: 8,
   },
   metaText: {
     fontSize: 12,
     color: colors.gray[600],
   },
+  subSection: {
+    marginTop: 14,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: colors.gray[100],
+  },
+  subTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.text.primary,
+    marginBottom: 8,
+  },
+  notesText: {
+    fontSize: 13,
+    color: colors.gray[700],
+    lineHeight: 20,
+  },
+  photoRow: {
+    gap: 8,
+    marginTop: 10,
+    paddingBottom: 2,
+  },
+  noteImage: {
+    width: 92,
+    height: 92,
+    borderRadius: 12,
+    backgroundColor: colors.gray[200],
+  },
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    marginBottom: 8,
+    marginTop: 16,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: colors.gray[100],
   },
   sectionTitle: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '700',
     color: colors.text.primary,
   },
@@ -253,24 +404,22 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: colors.gray[500],
   },
-  list: {
-    paddingHorizontal: 20,
-    paddingBottom: 20,
-    gap: 12,
-  },
   requestCard: {
-    backgroundColor: colors.background.primary,
-    borderRadius: 14,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
     padding: 16,
     borderWidth: 1,
     borderColor: colors.gray[200],
+    gap: 12,
+  },
+  requestTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
   },
   requestInfo: {
     flex: 1,
-    marginRight: 12,
+    marginRight: 8,
   },
   requestName: {
     fontSize: 14,
@@ -281,11 +430,12 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: colors.gray[500],
     marginTop: 4,
+    lineHeight: 17,
   },
   statusPill: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
     borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
   },
   statusPending: {
     backgroundColor: colors.warning[100],
@@ -293,11 +443,60 @@ const styles = StyleSheet.create({
   statusAccepted: {
     backgroundColor: colors.success[100],
   },
+  statusRejected: {
+    backgroundColor: colors.danger[100],
+  },
   statusText: {
     fontSize: 11,
     fontWeight: '700',
-    color: colors.text.primary,
     textTransform: 'capitalize',
+    color: colors.text.primary,
+  },
+  chipsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  chip: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 11,
+    backgroundColor: colors.gray[100],
+    fontSize: 12,
+    color: colors.text.primary,
+    fontWeight: '600',
+  },
+  actionsRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 6,
+  },
+  actionBtn: {
+    flex: 1,
+    borderRadius: 12,
+    paddingVertical: 11,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  rejectBtn: {
+    backgroundColor: '#FFF1F1',
+    borderWidth: 1,
+    borderColor: '#FBCBCB',
+  },
+  acceptBtn: {
+    backgroundColor: '#FFF6D9',
+    borderWidth: 1,
+    borderColor: '#F2DA82',
+  },
+  rejectBtnText: {
+    color: '#B42318',
+    fontWeight: '700',
+    fontSize: 13,
+  },
+  acceptBtnText: {
+    color: colors.text.primary,
+    fontWeight: '700',
+    fontSize: 13,
   },
   emptyState: {
     alignItems: 'center',
