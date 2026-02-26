@@ -1,0 +1,816 @@
+import React, { useState, useEffect, useRef } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ScrollView,
+  TextInput,
+  Alert,
+  RefreshControl,
+  Animated,
+  Dimensions,
+  StatusBar,
+  FlatList,
+  ImageBackground,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
+import { useAuth } from '@/contexts/AuthContext';
+import { useRide } from '@/contexts/RideContext';
+import { colors, typography, spacing, borderRadius, shadows } from '@/constants/theme';
+import LinkCabLogo from '@/components/LinkCabLogo';
+
+const { width, height } = Dimensions.get('window');
+
+export default function HomeScreen() {
+  const router = useRouter();
+  const { user, profile } = useAuth();
+  const { rides, loading, fetchRides } = useRide();
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedFilter, setSelectedFilter] = useState('all');
+  const [refreshing, setRefreshing] = useState(false);
+  const scrollY = useRef(new Animated.Value(0)).current;
+  const [showSearch, setShowSearch] = useState(false);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await fetchRides();
+    setRefreshing(false);
+  };
+
+  const getStatusBadge = (ride: any) => {
+    const isAvailable = ride.status === 'pending' || ride.status === 'active';
+    return {
+      label: isAvailable ? 'Available' : 'Booked',
+      bgColor: isAvailable ? colors.brand.secondary : colors.gray[200],
+      textColor: isAvailable ? colors.brand.primary : colors.gray[700],
+    };
+  };
+
+  const displayName = profile?.full_name || user?.email?.split('@')[0] || 'User';
+
+  const filteredRides = rides.filter((ride: any) => {
+    const pickup = ride.pickup_address || ride.pickup_location?.address || '';
+    const dropoff = ride.dropoff_address || ride.dropoff_location?.address || '';
+    const matchesSearch =
+      pickup.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      dropoff.toLowerCase().includes(searchQuery.toLowerCase());
+
+    if (selectedFilter === 'all') return matchesSearch;
+    if (selectedFilter === 'available')
+      return matchesSearch && (ride.status === 'pending' || ride.status === 'active');
+    if (selectedFilter === 'booked')
+      return matchesSearch && ['accepted', 'in_progress', 'completed'].includes(ride.status);
+
+    return matchesSearch;
+  });
+
+  const handleBookRide = (rideId: string) => {
+    Alert.alert('Book Ride', 'Would you like to book this ride?', [
+      {
+        text: 'Cancel',
+        style: 'cancel',
+      },
+      {
+        text: 'Book',
+        onPress: () => {
+          router.push(`/book-ride/${rideId}`);
+        },
+      },
+    ]);
+  };
+
+  return (
+    <SafeAreaView style={styles.container} edges={['top']}>
+      <StatusBar barStyle="light-content" backgroundColor={colors.brand.primary} />
+      
+      {/* Animated Header */}
+      <Animated.View 
+        style={[
+          styles.header,
+          {
+            transform: [{
+              translateY: scrollY.interpolate({
+                inputRange: [0, 100],
+                outputRange: [0, -50],
+                extrapolate: 'clamp',
+              }),
+            }],
+          },
+        ]}
+      >
+        <LinearGradient
+          colors={colors.gradients.primary as any}
+          style={styles.headerGradient}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+        >
+          {/* Top Bar */}
+          <View style={styles.topBar}>
+            <LinkCabLogo size="small" />
+            <View style={styles.topBarActions}>
+              <TouchableOpacity 
+                style={styles.iconButton} 
+                onPress={() => setShowSearch(!showSearch)}
+              >
+                <Ionicons name="search" size={20} color={colors.text.inverse} />
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={styles.iconButton} 
+                onPress={() => router.push('/(app)/requests')}
+              >
+                <Ionicons name="notifications-outline" size={20} color={colors.text.inverse} />
+                <View style={styles.notificationBadge}>
+                  <Text style={styles.notificationBadgeText}>3</Text>
+                </View>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* Hero Section */}
+          <View style={styles.heroSection}>
+            <Text style={styles.heroTitle}>Find Your Perfect Ride</Text>
+            <Text style={styles.heroSubtitle}>Quick, safe, and affordable</Text>
+            
+            {/* Enhanced Search Bar */}
+            <View style={styles.searchContainer}>
+              <Ionicons name="location" size={20} color={colors.brand.secondary} />
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Where are you going?"
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                placeholderTextColor={colors.gray[400]}
+                onFocus={() => setShowSearch(true)}
+                onBlur={() => setShowSearch(false)}
+              />
+              {searchQuery.length > 0 && (
+                <TouchableOpacity onPress={() => setSearchQuery('')} style={styles.clearButton}>
+                  <Ionicons name="close-circle" size={20} color={colors.gray[400]} />
+                </TouchableOpacity>
+              )}
+            </View>
+
+            {/* Quick Filters */}
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={styles.filterScroll}
+              contentContainerStyle={styles.filterContainer}
+            >
+              {[
+                { key: 'all', label: 'All Rides', icon: 'grid-outline' },
+                { key: 'nearby', label: 'Nearby', icon: 'location-outline' },
+                { key: 'available', label: 'Available', icon: 'checkmark-circle-outline' },
+                { key: 'popular', label: 'Popular', icon: 'star-outline' },
+              ].map((filter) => (
+                <TouchableOpacity
+                  key={filter.key}
+                  style={[
+                    styles.filterPill,
+                    selectedFilter === filter.key && styles.filterPillActive
+                  ]}
+                  onPress={() => setSelectedFilter(filter.key)}
+                >
+                  <Ionicons 
+                    name={filter.icon as any} 
+                    size={16} 
+                    color={selectedFilter === filter.key ? colors.text.inverse : colors.text.secondary} 
+                  />
+                  <Text style={[
+                    styles.filterPillText,
+                    selectedFilter === filter.key && styles.filterPillTextActive
+                  ]}>
+                    {filter.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </LinearGradient>
+      </Animated.View>
+
+      {/* Quick Actions */}
+      <View style={styles.quickActionsSection}>
+        <Text style={styles.sectionTitle}>Quick Actions</Text>
+        <View style={styles.quickActionsGrid}>
+          <TouchableOpacity 
+            style={styles.quickActionCard}
+            onPress={() => router.push('/(app)/create-ride')}
+          >
+            <LinearGradient colors={colors.gradients.secondary as any} style={styles.quickActionGradient}>
+              <Ionicons name="add" size={24} color={colors.brand.primary} />
+            </LinearGradient>
+            <Text style={styles.quickActionLabel}>Create Ride</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity 
+            style={styles.quickActionCard}
+            onPress={() => router.push('/(app)/my-rides')}
+          >
+            <View style={[styles.quickActionIcon, { backgroundColor: colors.gray[100] }]}>
+              <Ionicons name="car" size={24} color={colors.brand.primary} />
+            </View>
+            <Text style={styles.quickActionLabel}>My Rides</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity 
+            style={styles.quickActionCard}
+            onPress={() => router.push('/(app)/requests')}
+          >
+            <View style={[styles.quickActionIcon, { backgroundColor: colors.gray[100] }]}>
+              <Ionicons name="people" size={24} color={colors.brand.primary} />
+            </View>
+            <Text style={styles.quickActionLabel}>Requests</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+        {/* Rides List */}
+      <Animated.ScrollView
+        style={styles.content}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.contentContainer}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.brand.secondary]} />
+        }
+        onScroll={Animated.event(
+          [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+          { useNativeDriver: false }
+        )}
+        scrollEventThrottle={16}
+      >
+        {/* Section Title */}
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Available Rides</Text>
+          <TouchableOpacity onPress={() => router.push('/(app)/my-rides')}>
+            <Text style={styles.seeAllText}>See All</Text>
+          </TouchableOpacity>
+        </View>
+
+        {loading && rides.length === 0 ? (
+          <View style={styles.loadingContainer}>
+            <View style={styles.loadingAnimation}>
+              <Ionicons name="car-sport" size={48} color={colors.brand.secondary} />
+            </View>
+            <Text style={styles.loadingText}>Finding rides for you...</Text>
+          </View>
+        ) : filteredRides.length === 0 ? (
+          <View style={styles.emptyState}>
+            <View style={styles.emptyStateIcon}>
+              <Ionicons name="map-outline" size={64} color={colors.gray[300]} />
+            </View>
+            <Text style={styles.emptyStateText}>No rides found</Text>
+            <Text style={styles.emptyStateSubtext}>Try adjusting your search or filters</Text>
+            <TouchableOpacity 
+              style={styles.createRideButton}
+              onPress={() => router.push('/(app)/create-ride')}
+            >
+              <LinearGradient colors={colors.gradients.secondary as any} style={styles.createRideGradient}>
+                <Ionicons name="add" size={20} color={colors.brand.primary} />
+                <Text style={styles.createRideText}>Create a Ride</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <View style={styles.ridesList}>
+            {filteredRides.map((ride: any, index: number) => {
+              const statusBadge = getStatusBadge(ride);
+              return (
+                <TouchableOpacity
+                  key={ride.id}
+                  style={styles.rideCard}
+                  onPress={() => handleBookRide(ride.id)}
+                  activeOpacity={0.9}
+                >
+                  {/* Enhanced Ride Header */}
+                  <View style={styles.rideHeader}>
+                    <View style={styles.rideRoute}>
+                      <View style={styles.routeDot} />
+                      <View style={styles.routeLine} />
+                      <Ionicons name="location" size={16} color={colors.danger[500]} />
+                    </View>
+                    <View style={styles.rideLocations}>
+                      <Text style={styles.rideFrom} numberOfLines={1}>
+                        {ride.pickup_address || ride.pickup_location?.address || 'Unknown'}
+                      </Text>
+                      <Text style={styles.rideTo} numberOfLines={1}>
+                        {ride.dropoff_address || ride.dropoff_location?.address || 'Unknown'}
+                      </Text>
+                    </View>
+                    <View style={[styles.statusBadge, { backgroundColor: statusBadge.bgColor }]}>
+                      <Text style={[styles.statusText, { color: statusBadge.textColor }]}>
+                        {statusBadge.label}
+                      </Text>
+                    </View>
+                  </View>
+
+                  {/* Enhanced Ride Details */}
+                  <View style={styles.rideInfo}>
+                    <View style={styles.rideDetailRow}>
+                      <View style={styles.rideDetail}>
+                        <Ionicons name="calendar-outline" size={14} color={colors.text.secondary} />
+                        <Text style={styles.rideDetailText}>
+                          {ride.ride_date || new Date(ride.created_at).toLocaleDateString() || 'Not set'}
+                        </Text>
+                      </View>
+                      <View style={styles.rideDetail}>
+                        <Ionicons name="time-outline" size={14} color={colors.text.secondary} />
+                        <Text style={styles.rideDetailText}>
+                          {ride.ride_time || 'Not set'}
+                        </Text>
+                      </View>
+                    </View>
+
+                    <View style={styles.rideDetailRow}>
+                      <View style={styles.rideDetail}>
+                        <Ionicons name="people-outline" size={14} color={colors.text.secondary} />
+                        <Text style={styles.rideDetailText}>
+                          {ride.available_seats ?? 1} seats
+                        </Text>
+                      </View>
+                      <View style={styles.rideDetail}>
+                        <Ionicons name="car-outline" size={14} color={colors.text.secondary} />
+                        <Text style={styles.rideDetailText}>
+                          {ride.cab_type ? String(ride.cab_type).charAt(0).toUpperCase() + String(ride.cab_type).slice(1) : 'Sedan'}
+                        </Text>
+                      </View>
+                    </View>
+
+                    {/* Driver Info */}
+                    {ride.driver_name && (
+                      <View style={styles.driverInfo}>
+                        <View style={styles.driverAvatar}>
+                          <Ionicons name="person" size={16} color={colors.text.inverse} />
+                        </View>
+                        <View style={styles.driverDetails}>
+                          <Text style={styles.driverName}>{ride.driver_name}</Text>
+                          <View style={styles.driverRating}>
+                            <Ionicons name="star" size={12} color={colors.brand.secondary} />
+                            <Text style={styles.ratingText}>4.8</Text>
+                          </View>
+                        </View>
+                      </View>
+                    )}
+                  </View>
+
+                  {/* Enhanced Footer with Price and Action */}
+                  <View style={styles.rideFooter}>
+                    <View style={styles.ridePriceContainer}>
+                      <Text style={styles.priceLabel}>Estimated Fare</Text>
+                      <LinearGradient
+                        colors={colors.gradients.secondary as any}
+                        style={styles.priceGradient}
+                      >
+                        <Text style={styles.ridePrice}>
+                          ₹{ride.estimated_fare ?? ride.fare ?? 0}
+                        </Text>
+                      </LinearGradient>
+                    </View>
+                    
+                    <View style={styles.bookButtonContainer}>
+                      <Ionicons name="arrow-forward" size={18} color={colors.brand.primary} />
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        )}
+      </Animated.ScrollView>
+    </SafeAreaView>
+  );
+}
+          <Text style={styles.quickActionLabel}>My Rides</Text>
+          <Text style={styles.quickActionHint}>View all rides</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.quickActionCard}
+          onPress={() => router.push('/(app)/discover')}
+          activeOpacity={0.8}
+        >
+          <View style={styles.quickActionIcon}>
+            <Ionicons name="compass-outline" size={28} color={colors.primary[600]} />
+          </View>
+          <Text style={styles.quickActionLabel}>Discover</Text>
+          <Text style={styles.quickActionHint}>Popular routes</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Rides List */}
+      <ScrollView
+        style={styles.content}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.contentContainer}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary[600]} />
+        }
+      >
+        {loading ? (
+          <View style={styles.loadingContainer}>
+            <Text style={styles.loadingText}>Finding rides for you...</Text>
+          </View>
+        ) : filteredRides.length === 0 ? (
+          <View style={styles.emptyState}>
+            <View style={styles.emptyStateIcon}>
+              <Ionicons name="car-sport-outline" size={72} color={colors.gray[300]} />
+            </View>
+            <Text style={styles.emptyStateText}>No rides found</Text>
+            <Text style={styles.emptyStateSubtext}>Try adjusting your search or filters</Text>
+            <TouchableOpacity
+              style={styles.emptyStateButton}
+              onPress={() => router.push('/(app)/create-ride')}
+            >
+              <Text style={styles.emptyStateButtonText}>Create Your First Ride</Text>
+              <Ionicons name="arrow-forward" size={18} color={colors.text.inverse} />
+            </TouchableOpacity>
+          </View>
+        ) : (
+          filteredRides.map((ride) => {
+            const badge = getStatusBadge(ride);
+            return (
+            <TouchableOpacity
+              key={ride.id}
+              style={styles.rideCard}
+              onPress={() => handleBookRide(ride.id)}
+              activeOpacity={0.9}
+            >
+              <View style={styles.rideCardHeader}>
+                <View
+                  style={[
+                    styles.statusBadge,
+                    { backgroundColor: badge.bgColor },
+                  ]}
+                >
+                  <Text style={[styles.statusBadgeText, { color: badge.textColor }]}>
+                    {badge.label}
+                  </Text>
+                </View>
+              </View>
+              <View style={styles.rideHeader}>
+                <View style={styles.rideRoute}>
+                  <View style={styles.routeDot} />
+                  <View style={styles.routeLine} />
+                  <Ionicons name="location" size={16} color={colors.danger[500]} />
+                </View>
+                <View style={styles.rideLocations}>
+                  <Text style={styles.rideFrom} numberOfLines={1}>
+                    {ride.pickup_address || ride.pickup_location?.address || 'Unknown'}
+                  </Text>
+                  <Text style={styles.rideTo} numberOfLines={1}>
+                    {ride.dropoff_address || ride.dropoff_location?.address || 'Unknown'}
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.rideInfo}>
+                <View style={styles.rideDetailRow}>
+                  <View style={styles.rideDetail}>
+                    <Ionicons name="calendar-outline" size={14} color={colors.text.secondary} />
+                    <Text style={styles.rideDetailText}>
+                      {ride.ride_date || new Date(ride.created_at).toLocaleDateString() || 'Not set'}
+                    </Text>
+                  </View>
+                  <View style={styles.rideDetail}>
+                    <Ionicons name="time-outline" size={14} color={colors.text.secondary} />
+                    <Text style={styles.rideDetailText}>
+                      {ride.ride_time || 'Not set'}
+                    </Text>
+                  </View>
+                </View>
+
+                <View style={styles.rideDetailRow}>
+                  <View style={styles.rideDetail}>
+                    <Ionicons name="people-outline" size={14} color={colors.text.secondary} />
+                    <Text style={styles.rideDetailText}>
+                      {ride.available_seats ?? 1} seats
+                    </Text>
+                  </View>
+                  <View style={styles.rideDetail}>
+                    <Ionicons name="car-outline" size={14} color={colors.text.secondary} />
+                    <Text style={styles.rideDetailText}>
+                      {ride.cab_type ? String(ride.cab_type).charAt(0).toUpperCase() + String(ride.cab_type).slice(1) : 'Sedan'}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+
+              <View style={styles.rideFooter}>
+                <View style={styles.ridePriceContainer}>
+                  <LinearGradient
+                    colors={colors.gradients.secondary as any}
+                    style={styles.priceGradient}
+                  >
+                    <Text style={styles.ridePrice}>
+                      ₹{ride.estimated_fare ?? ride.fare ?? 0}
+                    </Text>
+                  </LinearGradient>
+                </View>
+                
+                <View style={styles.bookButtonContainer}>
+                  <Ionicons name="arrow-forward" size={18} color={colors.brand.primary} />
+                </View>
+              </View>
+            </TouchableOpacity>
+          );
+          })
+        )}
+      </ScrollView>
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: colors.background.primary,
+  },
+  header: {
+    paddingTop: 60,
+    paddingHorizontal: spacing[6],
+    paddingBottom: spacing[6],
+    borderBottomLeftRadius: borderRadius['2xl'],
+    borderBottomRightRadius: borderRadius['2xl'],
+    ...shadows.lg,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: spacing[6],
+  },
+  headerText: {
+    flex: 1,
+    marginLeft: spacing[3],
+  },
+  headerIcons: {
+    flexDirection: 'row',
+    gap: spacing[2],
+  },
+  iconButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'relative',
+  },
+  notificationBadge: {
+    position: 'absolute',
+    top: -2,
+    right: -2,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: colors.brand.secondary,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  notificationBadgeText: {
+    fontSize: 10,
+    fontWeight: 'bold',
+    color: colors.brand.primary,
+  },
+  headerTitle: {
+    fontSize: typography.fontSize['3xl'],
+    fontWeight: typography.fontWeight.bold,
+    color: colors.text.inverse,
+    marginBottom: spacing[2],
+  },
+  headerSubtitle: {
+    fontSize: typography.fontSize.base,
+    color: colors.text.inverse,
+    opacity: 0.9,
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.background.secondary,
+    borderRadius: borderRadius.lg,
+    paddingHorizontal: spacing[4],
+    marginBottom: spacing[4],
+  },
+  searchInput: {
+    flex: 1,
+    marginLeft: spacing[3],
+    fontSize: typography.fontSize.base,
+    color: colors.text.primary,
+  },
+  filterScroll: {
+    marginBottom: spacing[2],
+  },
+  filterContainer: {
+    paddingHorizontal: spacing[1],
+  },
+  filterPill: {
+    paddingHorizontal: spacing[4],
+    paddingVertical: spacing[2],
+    borderRadius: borderRadius.full,
+    backgroundColor: colors.background.secondary,
+    marginRight: spacing[2],
+  },
+  filterPillActive: {
+    backgroundColor: colors.primary[600],
+  },
+  filterPillText: {
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.medium,
+    color: colors.text.secondary,
+  },
+  filterPillTextActive: {
+    color: colors.text.inverse,
+  },
+  content: {
+    flex: 1,
+  },
+  contentContainer: {
+    padding: spacing[6],
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    fontSize: typography.fontSize.lg,
+    color: colors.text.secondary,
+  },
+  quickActions: {
+    flexDirection: 'row',
+    paddingHorizontal: spacing[6],
+    paddingVertical: spacing[4],
+    gap: spacing[3],
+  },
+  quickActionCard: {
+    flex: 1,
+    backgroundColor: colors.background.secondary,
+    borderRadius: borderRadius.lg,
+    padding: spacing[4],
+    alignItems: 'center',
+    ...shadows.md,
+  },
+  quickActionIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: colors.primary[50],
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: spacing[2],
+  },
+  quickActionLabel: {
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.text.primary,
+  },
+  quickActionHint: {
+    fontSize: typography.fontSize.xs,
+    color: colors.text.secondary,
+    marginTop: 2,
+  },
+  emptyState: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: spacing[12],
+  },
+  emptyStateIcon: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: colors.gray[100],
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: spacing[4],
+  },
+  emptyStateText: {
+    fontSize: typography.fontSize.xl,
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.text.primary,
+    marginBottom: spacing[2],
+  },
+  emptyStateSubtext: {
+    fontSize: typography.fontSize.sm,
+    color: colors.text.secondary,
+    marginBottom: spacing[6],
+  },
+  emptyStateButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.brand.primary,
+    paddingHorizontal: spacing[6],
+    paddingVertical: spacing[4],
+    borderRadius: borderRadius.lg,
+    gap: spacing[2],
+    ...shadows.md,
+  },
+  emptyStateButtonText: {
+    fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.text.inverse,
+  },
+  rideCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    marginBottom: spacing[2],
+  },
+  statusBadge: {
+    paddingHorizontal: spacing[3],
+    paddingVertical: spacing[1],
+    borderRadius: borderRadius.full,
+  },
+  statusBadgeText: {
+    fontSize: typography.fontSize.xs,
+    fontWeight: typography.fontWeight.semibold,
+  },
+  rideCard: {
+    backgroundColor: colors.background.secondary,
+    borderRadius: borderRadius.lg,
+    padding: spacing[4],
+    marginBottom: spacing[4],
+    ...shadows.md,
+  },
+  rideHeader: {
+    flexDirection: 'row',
+    marginBottom: spacing[4],
+  },
+  rideRoute: {
+    alignItems: 'center',
+    marginRight: spacing[3],
+  },
+  routeDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: colors.success[500],
+  },
+  routeLine: {
+    width: 2,
+    flex: 1,
+    backgroundColor: colors.gray[300],
+    marginVertical: spacing[1],
+  },
+  rideLocations: {
+    flex: 1,
+    justifyContent: 'space-between',
+  },
+  rideFrom: {
+    fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.text.primary,
+    marginBottom: spacing[2],
+  },
+  rideTo: {
+    fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.text.primary,
+  },
+  rideInfo: {
+    marginBottom: spacing[4],
+  },
+  rideDetailRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: spacing[2],
+  },
+  rideDetail: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  rideDetailText: {
+    fontSize: typography.fontSize.sm,
+    color: colors.text.secondary,
+    marginLeft: spacing[2],
+  },
+  rideFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  ridePriceContainer: {
+    borderRadius: borderRadius.md,
+    overflow: 'hidden',
+  },
+  priceGradient: {
+    paddingHorizontal: spacing[3],
+    paddingVertical: spacing[1],
+  },
+  ridePrice: {
+    fontSize: typography.fontSize.lg,
+    fontWeight: typography.fontWeight.bold,
+    color: colors.text.inverse,
+  },
+  bookButtonContainer: {
+    width: 32,
+    height: 32,
+    borderRadius: borderRadius.full,
+    backgroundColor: colors.brand.secondary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    ...shadows.md,
+  },
+});

@@ -1,0 +1,374 @@
+import React, { useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  TextInput,
+} from 'react-native';
+import { useRouter } from 'expo-router';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
+import { colors, typography, spacing, borderRadius, shadows } from '@/constants/theme';
+
+const categories = [
+  { id: 'all', label: 'All', icon: 'grid-outline' },
+  { id: 'airport', label: 'Airport', icon: 'airplane-outline' },
+  { id: 'it', label: 'IT Parks', icon: 'business-outline' },
+  { id: 'central', label: 'Central', icon: 'location-outline' },
+];
+
+const popularDestinations = [
+  { id: '1', name: 'Bangalore Airport', address: 'Kempegowda International Airport', price: 1200, rides: 156, category: 'airport' },
+  { id: '2', name: 'Electronic City', address: 'Tech Hub, Bangalore', price: 350, rides: 89, category: 'it' },
+  { id: '3', name: 'Whitefield', address: 'IT Park Area', price: 400, rides: 72, category: 'it' },
+  { id: '4', name: 'MG Road', address: 'Central Bangalore', price: 200, rides: 134, category: 'central' },
+  { id: '5', name: 'Koramangala', address: 'Restaurant Hub', price: 180, rides: 98, category: 'central' },
+  { id: '6', name: 'Indiranagar', address: 'Shopping District', price: 220, rides: 67, category: 'central' },
+];
+
+const trendingRoutes = [
+  { id: '1', from: 'MG Road', to: 'Electronic City', price: 350, time: '45 min' },
+  { id: '2', from: 'Whitefield', to: 'Airport', price: 1100, time: '55 min' },
+  { id: '3', from: 'Indiranagar', to: 'Koramangala', price: 150, time: '20 min' },
+];
+
+export default function DiscoverScreen() {
+  const router = useRouter();
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('all');
+
+  const filteredDestinations = popularDestinations.filter((d) => {
+    const matchesSearch =
+      d.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      d.address.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesCategory = selectedCategory === 'all' || d.category === selectedCategory;
+    return matchesSearch && matchesCategory;
+  });
+
+  return (
+    <SafeAreaView style={styles.container} edges={['top']}>
+      <LinearGradient
+        colors={['#007AFF', '#0051D5']}
+        style={styles.header}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+      >
+        <Text style={styles.headerTitle}>Discover</Text>
+        <Text style={styles.headerSubtitle}>Popular destinations & trending routes</Text>
+
+        <View style={styles.searchContainer}>
+          <Ionicons name="search" size={20} color={colors.gray[400]} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search destinations..."
+            placeholderTextColor={colors.gray[400]}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+          />
+        </View>
+
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.categoryScroll}
+          contentContainerStyle={styles.categoryContainer}
+        >
+          {categories.map((cat) => (
+            <TouchableOpacity
+              key={cat.id}
+              style={[
+                styles.categoryPill,
+                selectedCategory === cat.id && styles.categoryPillActive,
+              ]}
+              onPress={() => setSelectedCategory(cat.id)}
+            >
+              <Ionicons
+                name={cat.icon as any}
+                size={16}
+                color={selectedCategory === cat.id ? colors.primary[600] : colors.text.inverse}
+              />
+              <Text
+                style={[
+                  styles.categoryPillText,
+                  selectedCategory === cat.id && styles.categoryPillTextActive,
+                ]}
+              >
+                {cat.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </LinearGradient>
+
+      <ScrollView
+        style={styles.content}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.contentContainer}
+      >
+        <Text style={styles.sectionTitle}>Trending Routes</Text>
+        {trendingRoutes.map((route) => (
+          <TouchableOpacity
+            key={route.id}
+            style={styles.routeCard}
+            onPress={() => router.push('/(app)/create-ride')}
+            activeOpacity={0.8}
+          >
+            <View style={styles.routeInfo}>
+              <View style={styles.routeLocations}>
+                <View style={styles.routeDot} />
+                <Text style={styles.routeFrom}>{route.from}</Text>
+              </View>
+              <View style={styles.routeLine} />
+              <View style={styles.routeLocations}>
+                <Ionicons name="location" size={14} color={colors.danger[500]} />
+                <Text style={styles.routeTo}>{route.to}</Text>
+              </View>
+            </View>
+            <View style={styles.routeMeta}>
+              <Text style={styles.routePrice}>₹{route.price}</Text>
+              <Text style={styles.routeTime}>{route.time}</Text>
+            </View>
+            <Ionicons name="arrow-forward" size={20} color={colors.primary[600]} />
+          </TouchableOpacity>
+        ))}
+
+        <Text style={styles.sectionTitle}>Popular Destinations</Text>
+        {filteredDestinations.length === 0 ? (
+          <View style={styles.emptyState}>
+            <Ionicons name="search-outline" size={48} color={colors.gray[300]} />
+            <Text style={styles.emptyStateText}>No destinations found</Text>
+            <Text style={styles.emptyStateSubtext}>Try a different search or category</Text>
+          </View>
+        ) : (
+        <View style={styles.destinationsGrid}>
+          {filteredDestinations.map((dest) => (
+            <TouchableOpacity
+              key={dest.id}
+              style={styles.destinationCard}
+              onPress={() => router.push('/(app)/create-ride')}
+              activeOpacity={0.8}
+            >
+              <View style={styles.destinationIcon}>
+                <Ionicons name="location" size={28} color={colors.primary[600]} />
+              </View>
+              <Text style={styles.destinationName} numberOfLines={1}>
+                {dest.name}
+              </Text>
+              <Text style={styles.destinationAddress} numberOfLines={1}>
+                {dest.address}
+              </Text>
+              <View style={styles.destinationFooter}>
+                <Text style={styles.destinationPrice}>₹{dest.price}</Text>
+                <Text style={styles.destinationRides}>{dest.rides} rides</Text>
+              </View>
+            </TouchableOpacity>
+          ))}
+        </View>
+        )}
+      </ScrollView>
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: colors.background.primary,
+  },
+  header: {
+    paddingTop: 60,
+    paddingHorizontal: spacing[6],
+    paddingBottom: spacing[6],
+    borderBottomLeftRadius: borderRadius['2xl'],
+    borderBottomRightRadius: borderRadius['2xl'],
+    ...shadows.lg,
+  },
+  headerTitle: {
+    fontSize: typography.fontSize['2xl'],
+    fontWeight: typography.fontWeight.bold,
+    color: colors.text.inverse,
+    marginBottom: spacing[2],
+  },
+  headerSubtitle: {
+    fontSize: typography.fontSize.sm,
+    color: colors.text.inverse,
+    opacity: 0.9,
+    marginBottom: spacing[4],
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderRadius: borderRadius.lg,
+    paddingHorizontal: spacing[4],
+  },
+  searchInput: {
+    flex: 1,
+    marginLeft: spacing[3],
+    fontSize: typography.fontSize.base,
+    color: colors.text.inverse,
+    paddingVertical: spacing[3],
+  },
+  categoryScroll: {
+    marginTop: spacing[4],
+  },
+  categoryContainer: {
+    paddingRight: spacing[6],
+    gap: spacing[2],
+  },
+  categoryPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing[4],
+    paddingVertical: spacing[2],
+    borderRadius: borderRadius.full,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    marginRight: spacing[2],
+    gap: spacing[2],
+  },
+  categoryPillActive: {
+    backgroundColor: 'rgba(255,255,255,0.9)',
+  },
+  categoryPillText: {
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.medium,
+    color: colors.text.inverse,
+  },
+  categoryPillTextActive: {
+    color: colors.primary[600],
+  },
+  content: {
+    flex: 1,
+  },
+  contentContainer: {
+    padding: spacing[6],
+    paddingBottom: spacing[12],
+  },
+  sectionTitle: {
+    fontSize: typography.fontSize.lg,
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.text.primary,
+    marginBottom: spacing[4],
+    marginTop: spacing[2],
+  },
+  routeCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.background.secondary,
+    borderRadius: borderRadius.lg,
+    padding: spacing[4],
+    marginBottom: spacing[3],
+    ...shadows.md,
+  },
+  routeInfo: {
+    flex: 1,
+  },
+  routeLocations: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginLeft: 4,
+  },
+  routeDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: colors.success[500],
+    marginRight: spacing[2],
+  },
+  routeLine: {
+    width: 2,
+    height: 12,
+    backgroundColor: colors.gray[300],
+    marginLeft: 11,
+    marginVertical: spacing[1],
+  },
+  routeFrom: {
+    fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.text.primary,
+  },
+  routeTo: {
+    fontSize: typography.fontSize.sm,
+    color: colors.text.secondary,
+    marginLeft: spacing[2],
+  },
+  routeMeta: {
+    alignItems: 'flex-end',
+    marginRight: spacing[4],
+  },
+  routePrice: {
+    fontSize: typography.fontSize.lg,
+    fontWeight: typography.fontWeight.bold,
+    color: colors.primary[600],
+  },
+  routeTime: {
+    fontSize: typography.fontSize.xs,
+    color: colors.text.secondary,
+  },
+  destinationsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginHorizontal: -spacing[2],
+  },
+  destinationCard: {
+    width: '48%',
+    marginHorizontal: '1%',
+    marginBottom: spacing[4],
+    backgroundColor: colors.background.secondary,
+    borderRadius: borderRadius.lg,
+    padding: spacing[4],
+    ...shadows.md,
+  },
+  destinationIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: borderRadius.lg,
+    backgroundColor: colors.primary[50],
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: spacing[3],
+  },
+  destinationName: {
+    fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.text.primary,
+  },
+  destinationAddress: {
+    fontSize: typography.fontSize.xs,
+    color: colors.text.secondary,
+    marginTop: spacing[1],
+    marginBottom: spacing[2],
+  },
+  destinationFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  destinationPrice: {
+    fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.bold,
+    color: colors.primary[600],
+  },
+  destinationRides: {
+    fontSize: typography.fontSize.xs,
+    color: colors.text.secondary,
+  },
+  emptyState: {
+    alignItems: 'center',
+    paddingVertical: spacing[12],
+  },
+  emptyStateText: {
+    fontSize: typography.fontSize.lg,
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.text.primary,
+    marginTop: spacing[4],
+    marginBottom: spacing[2],
+  },
+  emptyStateSubtext: {
+    fontSize: typography.fontSize.sm,
+    color: colors.text.secondary,
+  },
+});
