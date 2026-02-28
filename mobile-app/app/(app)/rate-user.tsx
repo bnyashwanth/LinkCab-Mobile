@@ -48,6 +48,10 @@ export default function RateUserScreen() {
   const params = useLocalSearchParams();
   const otherUserId = params.otherUserId as string;
   const rideId = params.rideId as string;
+  const safeGoBack = () => {
+    if (router.canGoBack()) router.back();
+    else router.replace('/(app)/home');
+  };
 
   const [otherUser, setOtherUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -62,7 +66,7 @@ export default function RateUserScreen() {
 
   useEffect(() => {
     if (!user || !otherUserId || !rideId) {
-      router.back();
+      safeGoBack();
       return;
     }
 
@@ -140,7 +144,7 @@ export default function RateUserScreen() {
           {
             text: 'Done',
             style: 'default',
-            onPress: () => router.back(),
+            onPress: safeGoBack,
           },
         ]
       );
@@ -218,7 +222,7 @@ export default function RateUserScreen() {
 
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+        <TouchableOpacity style={styles.backButton} onPress={safeGoBack}>
           <Ionicons name="arrow-back" size={24} color={BRAND.black} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Rate Your Experience</Text>

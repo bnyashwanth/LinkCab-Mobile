@@ -5,13 +5,14 @@ import {
   StyleSheet,
   TouchableOpacity,
   Alert,
-  SafeAreaView,
   StatusBar,
   ActivityIndicator,
   ScrollView,
   ScrollViewProps,
   Animated,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 // debug wrapper to find stray text nodes
 const DebugScrollView: React.FC<ScrollViewProps> = props => {
@@ -137,6 +138,9 @@ export default function BookRideScreen() {
   const [submitting, setSubmitting] = useState(false);
   const [ride, setRide] = useState<Ride | null>(null);
   const [buttonScale] = useState(new Animated.Value(1));
+  const [smallBags, setSmallBags] = useState(0);
+  const [mediumBags, setMediumBags] = useState(0);
+  const [largeBags, setLargeBags] = useState(0);
   const [userRequest, setUserRequest] = useState<{ status: string; responded_at?: string; created_at?: string } | null>(null);
   // only relevant when current user is owner of ride
   const [rideRequests, setRideRequests] = useState<RideRequest[]>([]);
@@ -375,7 +379,11 @@ export default function BookRideScreen() {
       }
 
       // Send ride request
-      const { error: requestError } = await requestRide(mappedId);
+      const { error: requestError } = await requestRide(mappedId, {
+        small_bags: smallBags,
+        medium_bags: mediumBags,
+        large_bags: largeBags,
+      });
 
       if (requestError) {
         Alert.alert('Request Failed', requestError.message || 'Failed to send ride request');
@@ -532,6 +540,14 @@ export default function BookRideScreen() {
           </View>
         )}
 
+
+        <View style={styles.baggageSection}>
+          <Text style={styles.sectionTitle}>Creator Luggage</Text>
+          <Text style={styles.noRequestsText}>
+            Small {ride.creator_small_bags || 0} | Medium {ride.creator_medium_bags || 0} | Large {ride.creator_large_bags || 0}
+          </Text>
+        </View>
+
         {/* Owner incoming requests */}
         {user && ride?.rider_id === user.id && (
           <View style={styles.ownerRequestsSection}>
@@ -547,6 +563,9 @@ export default function BookRideScreen() {
                     <Text style={styles.requestPassengerName}>{req.passenger?.full_name || 'Unknown User'}</Text>
                     <Text style={[styles.requestStatus, {color: getStatusColor(req.status)}]}>{req.status}</Text>
                   </View>
+                  <Text style={styles.noRequestsText}>
+                    Bags: Small {req.small_bags || 0}, Medium {req.medium_bags || 0}, Large {req.large_bags || 0}
+                  </Text>
                   {req.status === 'pending' && (
                     <View style={styles.requestActionsRow}>
                       <TouchableOpacity
@@ -572,6 +591,45 @@ export default function BookRideScreen() {
         {/* Request Button - only show for non-owners (passengers) */}
         {user?.id !== ride?.rider_id && (
           <Animated.View style={[{ transform: [{ scale: buttonScale }] }, styles.buttonContainer]}>
+            <View style={styles.baggageSection}>
+              <Text style={styles.sectionTitle}>Your Luggage</Text>
+              <View style={styles.bagAdjustRow}>
+                <Text style={styles.requestPassengerName}>Small</Text>
+                <View style={styles.adjustActions}>
+                  <TouchableOpacity style={styles.adjustBtn} onPress={() => setSmallBags(v => Math.max(0, v - 1))}>
+                    <Text style={styles.ownerActionText}>-</Text>
+                  </TouchableOpacity>
+                  <Text style={styles.requestStatus}>{smallBags}</Text>
+                  <TouchableOpacity style={styles.adjustBtn} onPress={() => setSmallBags(v => Math.min(5, v + 1))}>
+                    <Text style={styles.ownerActionText}>+</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+              <View style={styles.bagAdjustRow}>
+                <Text style={styles.requestPassengerName}>Medium</Text>
+                <View style={styles.adjustActions}>
+                  <TouchableOpacity style={styles.adjustBtn} onPress={() => setMediumBags(v => Math.max(0, v - 1))}>
+                    <Text style={styles.ownerActionText}>-</Text>
+                  </TouchableOpacity>
+                  <Text style={styles.requestStatus}>{mediumBags}</Text>
+                  <TouchableOpacity style={styles.adjustBtn} onPress={() => setMediumBags(v => Math.min(5, v + 1))}>
+                    <Text style={styles.ownerActionText}>+</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+              <View style={styles.bagAdjustRow}>
+                <Text style={styles.requestPassengerName}>Large</Text>
+                <View style={styles.adjustActions}>
+                  <TouchableOpacity style={styles.adjustBtn} onPress={() => setLargeBags(v => Math.max(0, v - 1))}>
+                    <Text style={styles.ownerActionText}>-</Text>
+                  </TouchableOpacity>
+                  <Text style={styles.requestStatus}>{largeBags}</Text>
+                  <TouchableOpacity style={styles.adjustBtn} onPress={() => setLargeBags(v => Math.min(5, v + 1))}>
+                    <Text style={styles.ownerActionText}>+</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
             <TouchableOpacity
               style={[
                 styles.requestButton,
@@ -867,6 +925,34 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     borderWidth: 1,
     borderColor: "#FEF3C7",
+  },
+  baggageSection: {
+    backgroundColor: '#F9FAFB',
+    marginHorizontal: 16,
+    marginTop: 12,
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  bagAdjustRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  adjustActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  adjustBtn: {
+    backgroundColor: '#111827',
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   // owner request section styles
   ownerRequestsSection: {

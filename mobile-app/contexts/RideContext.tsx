@@ -73,6 +73,11 @@ export const RideProvider: React.FC<RideProviderProps> = ({ children }) => {
         cab_type?: string;
         gender_preference?: string;
         notes?: string;
+        booking_app?: 'uber' | 'ola' | 'rapido' | 'other';
+        note_photo_urls?: string[];
+        creator_small_bags?: number;
+        creator_medium_bags?: number;
+        creator_large_bags?: number;
       }
   ): Promise<{ error: any; data: Ride | null }> => {
     if (!user) {
@@ -121,6 +126,21 @@ export const RideProvider: React.FC<RideProviderProps> = ({ children }) => {
       if ('notes' in input && input.notes) {
         insertData.notes = input.notes;
       }
+      if ('booking_app' in input && input.booking_app) {
+        insertData.booking_app = input.booking_app;
+      }
+      if ('note_photo_urls' in input && input.note_photo_urls) {
+        insertData.note_photo_urls = input.note_photo_urls;
+      }
+      if ('creator_small_bags' in input) {
+        insertData.creator_small_bags = input.creator_small_bags ?? 0;
+      }
+      if ('creator_medium_bags' in input) {
+        insertData.creator_medium_bags = input.creator_medium_bags ?? 0;
+      }
+      if ('creator_large_bags' in input) {
+        insertData.creator_large_bags = input.creator_large_bags ?? 0;
+      }
 
       const { data, error } = await api.createRide(insertData);
 
@@ -140,7 +160,10 @@ export const RideProvider: React.FC<RideProviderProps> = ({ children }) => {
     }
   };
 
-  const requestRide = async (rideId: string): Promise<{ error: any }> => {
+  const requestRide = async (
+    rideId: string,
+    options?: { small_bags?: number; medium_bags?: number; large_bags?: number }
+  ): Promise<{ error: any }> => {
     if (!user) {
       return { error: new Error('User not authenticated') };
     }
@@ -153,6 +176,9 @@ export const RideProvider: React.FC<RideProviderProps> = ({ children }) => {
           passenger_id: user.id,
           status: 'pending',
           requested_at: new Date().toISOString(),
+          small_bags: options?.small_bags ?? 0,
+          medium_bags: options?.medium_bags ?? 0,
+          large_bags: options?.large_bags ?? 0,
         })
         .select();
 

@@ -51,6 +51,11 @@ export interface Ride {
   cab_type?: string;
   driver_name?: string;
   gender_preference?: 'male' | 'female' | 'any';
+  booking_app?: 'uber' | 'ola' | 'rapido' | 'other';
+  note_photo_urls?: string[];
+  creator_small_bags?: number;
+  creator_medium_bags?: number;
+  creator_large_bags?: number;
   payment_method: 'stripe' | 'razorpay';
   payment_status: 'pending' | 'paid' | 'failed';
   created_at: string;
@@ -71,6 +76,17 @@ export interface RideRequest {
   responded_at?: string;
   created_at: string;
   passenger?: Profile; // optional joined profile data
+  small_bags?: number;
+  medium_bags?: number;
+  large_bags?: number;
+}
+
+export interface FavoriteRoute {
+  id: string;
+  user_id: string;
+  from_city: string;
+  to_city: string;
+  created_at: string;
 }
 
 export interface Location {
@@ -110,9 +126,21 @@ export interface RideContextType {
         cab_type?: string;
         gender_preference?: string;
         notes?: string;
+        booking_app?: 'uber' | 'ola' | 'rapido' | 'other';
+        note_photo_urls?: string[];
+        creator_small_bags?: number;
+        creator_medium_bags?: number;
+        creator_large_bags?: number;
       }
   ) => Promise<{ error: any; data: Ride | null }>;
-  requestRide: (rideId: string) => Promise<{ error: any }>;
+  requestRide: (
+    rideId: string,
+    options?: {
+      small_bags?: number;
+      medium_bags?: number;
+      large_bags?: number;
+    }
+  ) => Promise<{ error: any }>;
   acceptRide: (rideId: string) => Promise<{ error: any }>;
   completeRide: (rideId: string) => Promise<{ error: any }>;
   cancelRide: (rideId: string) => Promise<{ error: any }>;

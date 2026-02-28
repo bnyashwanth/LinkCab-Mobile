@@ -67,20 +67,21 @@ export default function ChatScreen() {
   const [sending, setSending] = useState(false);
   
   const flatListRef = useRef<FlatList>(null);
+  const safeGoBack = () => {
+    if (router.canGoBack()) router.back();
+    else router.replace('/(app)/home');
+  };
 
   useEffect(() => {
     if (!user || !rideId || !otherUserId) {
-      router.back();
+      safeGoBack();
       return;
     }
 
     fetchOtherUser();
     fetchMessages();
-    setupRealtimeSubscription();
-
-    return () => {
-      // Cleanup subscription
-    };
+    const cleanup = setupRealtimeSubscription();
+    return cleanup;
   }, [user, rideId, otherUserId]);
 
   const fetchOtherUser = async () => {
@@ -245,7 +246,7 @@ export default function ChatScreen() {
       
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+        <TouchableOpacity style={styles.backButton} onPress={safeGoBack}>
           <Ionicons name="arrow-back" size={24} color={BRAND.black} />
         </TouchableOpacity>
         

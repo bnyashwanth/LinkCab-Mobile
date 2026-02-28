@@ -28,14 +28,19 @@ export default function LoginScreen() {
   const { signIn, signInWithOAuth, user } = useAuth();
   const params = useLocalSearchParams();
 
-  const [shouldNavigate, setShouldNavigate] = useState(false);
+  const LOGIN_TIMEOUT_MS = 15000;
 
   useEffect(() => {
-    // Check if user is already logged in (from email verification)
     if (user) {
-      setShouldNavigate(true);
+      setLoading(false);
+      router.replace('/(app)/home');
+      return;
     }
+    // Ensure button never stays stuck in loading state on login screen
+    setLoading(false);
+  }, [user, router]);
 
+  useEffect(() => {
     // Check for verification messages from deep link
     if (params.message) {
       setMessage(params.message as string);
@@ -45,13 +50,7 @@ export default function LoginScreen() {
     if (params.access_token || params.refresh_token) {
       setMessage('Email verified successfully! You can now log in.');
     }
-  }, [user, router, params]);
-
-  useEffect(() => {
-    if (shouldNavigate) {
-      router.replace('/(app)/home');
-    }
-  }, [shouldNavigate, router]);
+  }, [params]);
 
   const handleEmailSignIn = async () => {
     if (!email || !password) {
@@ -62,13 +61,17 @@ export default function LoginScreen() {
     setLoading(true);
     setMessage('');
     try {
-      const { error } = await signIn(email, password);
+      const timeoutPromise = new Promise<{ error: any }>((resolve) =>
+        setTimeout(() => resolve({ error: { message: 'Sign in timed out. Please try again.' } }), LOGIN_TIMEOUT_MS)
+      );
+      const { error } = await Promise.race([signIn(email, password), timeoutPromise]);
       if (error) {
         Alert.alert('Login Error', error.message);
-      } else {
-        // Login successful - trigger navigation
-        setShouldNavigate(true);
+        return;
       }
+      // Force immediate transition after successful sign-in.
+      setLoading(false);
+      router.replace('/(app)/home');
     } catch (error) {
       captureException(error);
       Alert.alert('Error', 'An unexpected error occurred');
@@ -83,9 +86,6 @@ export default function LoginScreen() {
       const { error } = await signInWithOAuth(provider);
       if (error) {
         Alert.alert('Login Error', error.message);
-      } else {
-        // OAuth login successful - trigger navigation
-        setShouldNavigate(true);
       }
     } catch (error) {
       captureException(error);

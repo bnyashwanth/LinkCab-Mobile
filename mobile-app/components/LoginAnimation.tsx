@@ -48,6 +48,11 @@ export default function LoginAnimation({
     handleVideoEnd({} as AVPlaybackStatus);
   };
 
+  const handleVideoError = () => {
+    if (onComplete) onComplete();
+    else router.replace('/(app)/home');
+  };
+
   return (
     <View style={styles.container}>
       <Animated.View style={[styles.videoContainer, { opacity: fadeOutAnim }]}>
@@ -59,6 +64,7 @@ export default function LoginAnimation({
           isLooping={false}
           onPlaybackStatusUpdate={handleVideoEnd}
           onLoad={handleVideoLoad}
+          onError={handleVideoError}
         />
         
         {/* Skip button for better UX */}

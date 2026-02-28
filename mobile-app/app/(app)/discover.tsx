@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useRouter } from 'expo-router';
-import { StyleSheet, View, Text, TouchableOpacity, FlatList, ScrollViewProps, ScrollView, Alert, TextInput, Dimensions, SafeAreaView, StatusBar } from 'react-native';
+import { StyleSheet, View, Text, TouchableOpacity, FlatList, ScrollViewProps, ScrollView, Alert, TextInput, Dimensions, StatusBar } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 // helper used during debugging to catch stray text nodes
 const DebugScrollView: React.FC<ScrollViewProps> = props => {
@@ -215,7 +216,6 @@ export default function DiscoverScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
-      <View style={styles.topSpacer} />
 
       {/* Header */}
       <View style={styles.header}>
@@ -376,10 +376,6 @@ export default function DiscoverScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#FFFFFF",
-  },
-  topSpacer: {
-    height: 48,
     backgroundColor: "#FFFFFF",
   },
   header: {

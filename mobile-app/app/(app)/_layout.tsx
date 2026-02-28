@@ -1,144 +1,129 @@
-import { Tabs } from 'expo-router';
-import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Redirect, Tabs } from 'expo-router';
+import { Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { TouchableOpacity, View, Text, StyleSheet } from 'react-native';
-import { useRouter, usePathname } from 'expo-router';
-import { colors } from "../../constants/theme";
-import LinkCabLogo from "../../components/LinkCabLogo";
+import { colors } from '../../constants/theme';
+import { useAuth } from '../../contexts/AuthContext';
 
 export default function AppLayout() {
-  const insets = useSafeAreaInsets();
-  const tabBarHeight = 60;
-  const bottomPadding = Math.max(insets.bottom, 16);
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <Text>Loading...</Text>
+      </View>
+    );
+  }
+
+  if (!user) {
+    return <Redirect href="/(auth)/login" />;
+  }
 
   return (
-    <SafeAreaProvider>
-      <Tabs
-        screenOptions={{
-          // Hide the navigator's built-in tab bar; we'll render a custom footer
-          tabBarButton: () => null,
-          tabBarStyle: { display: 'none', height: 0, position: 'absolute' },
-          tabBarActiveTintColor: colors.brand.primary,
-          tabBarInactiveTintColor: colors.gray[400],
-          tabBarItemStyle: {
-            flex: 1,
-            justifyContent: 'center',
-            alignItems: 'center',
-            minWidth: 0,
-            paddingVertical: 4,
-          },
-          tabBarShowLabel: true,
-          tabBarLabelStyle: {
-            fontSize: 12,
-            fontWeight: '500',
-          },
-          headerShown: false,
-          animation: 'fade',
-          lazy: true,
+    <Tabs
+      screenOptions={{
+        headerShown: false,
+        animation: 'fade',
+        tabBarActiveTintColor: '#D4A300',
+        tabBarInactiveTintColor: '#7A808A',
+        sceneStyle: {
+          backgroundColor: colors.background.primary,
+        },
+        tabBarStyle: {
+          backgroundColor: '#FFFFFF',
+          borderTopColor: '#E9E9E0',
+          borderTopWidth: 1,
+          height: 68,
+          paddingTop: 6,
+          paddingBottom: 8,
+        },
+        tabBarItemStyle: {
+          paddingVertical: 2,
+          borderRadius: 12,
+          marginHorizontal: 2,
+        },
+        tabBarHideOnKeyboard: true,
+        tabBarActiveBackgroundColor: '#FFFFFF',
+        tabBarLabelStyle: {
+          fontSize: 11,
+          fontWeight: '700',
+          letterSpacing: 0.2,
+        },
+      }}
+    >
+      <Tabs.Screen
+        name="home"
+        options={{
+          title: 'Home',
+          tabBarLabel: ({ children }) => (
+            <Text style={{ color: '#7A808A', fontSize: 11, fontWeight: '700' }}>{children}</Text>
+          ),
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons name={focused ? 'home' : 'home-outline'} size={22} color={color} />
+          ),
         }}
-      >
-        <Tabs.Screen
-          name="home"
-          options={{
-            title: 'Home',
-            tabBarIcon: ({ color, focused }) => (
-              <Ionicons name={focused ? 'home' : 'home-outline'} size={24} color={color} />
-            ),
-          }}
-        />
-        <Tabs.Screen
-          name="discover"
-          options={{
-            title: 'Discover',
-            tabBarIcon: ({ color, focused }) => (
-              <Ionicons name={focused ? 'compass' : 'compass-outline'} size={24} color={color} />
-            ),
-          }}
-        />
-        <Tabs.Screen
-          name="create-ride"
-          options={{
-            title: 'Create',
-            tabBarIcon: ({ color, focused }) => (
-              <Ionicons name={focused ? 'add-circle' : 'add-circle-outline'} size={24} color={color} />
-            ),
-          }}
-        />
-        <Tabs.Screen
-          name="requests"
-          options={{
-            title: 'Requests',
-            tabBarIcon: ({ color, focused }) => (
-              <Ionicons name={focused ? 'notifications' : 'notifications-outline'} size={24} color={color} />
-            ),
-          }}
-        />
-        <Tabs.Screen
-          name="profile"
-          options={{
-            title: 'Profile',
-            tabBarIcon: ({ color, focused }) => (
-              <Ionicons name={focused ? 'person' : 'person-outline'} size={24} color={color} />
-            ),
-          }}
-        />
-      </Tabs>
-      {/* Custom footer navigation with exactly 5 buttons */}
-      <FooterNav insets={insets} />
-    </SafeAreaProvider>
+      />
+      <Tabs.Screen
+        name="discover"
+        options={{
+          title: 'Discover',
+          tabBarLabel: ({ children }) => (
+            <Text style={{ color: '#7A808A', fontSize: 11, fontWeight: '700' }}>{children}</Text>
+          ),
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons name={focused ? 'compass' : 'compass-outline'} size={22} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="announcements"
+        options={{
+          title: 'Alerts',
+          tabBarLabel: ({ children }) => (
+            <Text style={{ color: '#7A808A', fontSize: 11, fontWeight: '700' }}>{children}</Text>
+          ),
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons name={focused ? 'megaphone' : 'megaphone-outline'} size={22} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="profile"
+        options={{
+          title: 'Profile',
+          tabBarLabel: ({ children }) => (
+            <Text style={{ color: '#7A808A', fontSize: 11, fontWeight: '700' }}>{children}</Text>
+          ),
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons name={focused ? 'person' : 'person-outline'} size={22} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen name="create-ride" options={{ href: null }} />
+      <Tabs.Screen name="analytics" options={{ href: null }} />
+      <Tabs.Screen name="airport-rides" options={{ href: null }} />
+      <Tabs.Screen name="announcement-details" options={{ href: null }} />
+      <Tabs.Screen name="chat" options={{ href: null }} />
+      <Tabs.Screen name="destination" options={{ href: null }} />
+      <Tabs.Screen name="destination-detail" options={{ href: null }} />
+      <Tabs.Screen name="edit-profile" options={{ href: null }} />
+      <Tabs.Screen name="emergency" options={{ href: null }} />
+      <Tabs.Screen name="favorites" options={{ href: null }} />
+      <Tabs.Screen name="help-support" options={{ href: null }} />
+      <Tabs.Screen name="live-tracking" options={{ href: null }} />
+      <Tabs.Screen name="my-rides" options={{ href: null }} />
+      <Tabs.Screen name="my-requests" options={{ href: null }} />
+      <Tabs.Screen name="payment-methods" options={{ href: null }} />
+      <Tabs.Screen name="privacy-security" options={{ href: null }} />
+      <Tabs.Screen name="rate-user" options={{ href: null }} />
+      <Tabs.Screen name="requests" options={{ href: null }} />
+      <Tabs.Screen name="ride-creator-profile" options={{ href: null }} />
+      <Tabs.Screen name="safety" options={{ href: null }} />
+      <Tabs.Screen name="search" options={{ href: null }} />
+      <Tabs.Screen name="terms" options={{ href: null }} />
+      <Tabs.Screen name="verification" options={{ href: null }} />
+      <Tabs.Screen name="wallet" options={{ href: null }} />
+      <Tabs.Screen name="[book-ride]" options={{ href: null }} />
+    </Tabs>
   );
 }
-
-function FooterNav({ insets }: { insets: { bottom: number } }) {
-  const router = useRouter();
-  const items = [
-    { key: 'home', label: 'Home', icon: 'home-outline', route: '/(app)/home' },
-    { key: 'discover', label: 'Discover', icon: 'compass-outline', route: '/(app)/discover' },
-    { key: 'create', label: 'Create', icon: 'add-circle-outline', route: '/(app)/create-ride' },
-    { key: 'requests', label: 'Requests', icon: 'notifications-outline', route: '/(app)/requests' },
-    { key: 'profile', label: 'Profile', icon: 'person-outline', route: '/(app)/profile' },
-  ];
-  const pathname = usePathname() || '';
-  const activeKey = items.find((it) => pathname.includes(it.key))?.key || 'home';
-
-  return (
-    <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 20) }]}>
-      {items.map((it) => {
-        const isActive = it.key === activeKey;
-        return (
-          <TouchableOpacity key={it.key} style={styles.footerBtn} onPress={() => router.push(it.route)}>
-            <Ionicons name={isActive ? it.icon.replace('-outline', '') as any : it.icon as any} size={22} color={isActive ? colors.text.primary : colors.gray[400]} />
-            <Text style={[styles.footerLabel, { color: isActive ? colors.text.primary : colors.gray[400] }]}>{it.label}</Text>
-          </TouchableOpacity>
-        );
-      })}
-    </View>
-  );
-}
-
-const styles = StyleSheet.create({
-  footer: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    height: 72,
-    backgroundColor: colors.background.primary,
-    borderTopWidth: 1,
-    borderTopColor: 'transparent',
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    alignItems: 'center',
-    paddingHorizontal: 8,
-  },
-  footerBtn: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  footerLabel: {
-    fontSize: 10,
-    color: colors.text.primary,
-    marginTop: 2,
-  },
-});

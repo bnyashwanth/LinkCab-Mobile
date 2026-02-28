@@ -25,12 +25,14 @@ interface NotificationProviderProps {
 
 export const NotificationProvider: React.FC<NotificationProviderProps> = ({ children }) => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const canUseBrowserNotification =
+    typeof window !== 'undefined' && typeof Notification !== 'undefined';
 
   const addNotification = (notification: Notification) => {
     setNotifications(prev => [notification, ...prev]);
     
     // Show system notification if supported
-    if ('Notification' in window) {
+    if (canUseBrowserNotification) {
       new Notification(notification.title, {
         body: notification.body,
         icon: '/icon.png',
@@ -50,10 +52,10 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
 
   // Request notification permissions
   useEffect(() => {
-    if ('Notification' in window && 'requestPermission' in Notification) {
+    if (canUseBrowserNotification && 'requestPermission' in Notification) {
       Notification.requestPermission();
     }
-  }, []);
+  }, [canUseBrowserNotification]);
 
   return (
     <NotificationContext.Provider value={{

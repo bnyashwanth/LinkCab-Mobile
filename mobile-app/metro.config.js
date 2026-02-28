@@ -15,6 +15,7 @@ config.watchFolders = [workspaceRoot];
 config.resolver.nodeModulesPaths = [
     path.resolve(projectRoot, 'node_modules'),
     path.resolve(workspaceRoot, 'node_modules'),
+    path.resolve(workspaceRoot, 'node_modules', 'react-native', 'node_modules'),
 ];
 
 // 3. Force Metro to resolve hoisted dependencies from the workspace root

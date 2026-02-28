@@ -4,10 +4,10 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  SafeAreaView,
   Alert,
   Dimensions,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
@@ -33,21 +33,31 @@ interface RideData {
 }
 
 export default function LiveTrackingScreen() {
+  const router = useRouter();
   const { user } = useAuth();
   const { id } = useLocalSearchParams();
   const [ride, setRide] = useState<RideData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [missingRideId, setMissingRideId] = useState(false);
   const [tracking, setTracking] = useState(false);
   const [routeCoordinates, setRouteCoordinates] = useState<Location[]>([]);
   const mapRef = useRef<MapView>(null);
+  const safeGoBack = () => {
+    if (router.canGoBack()) router.back();
+    else router.replace('/(app)/home');
+  };
 
   useEffect(() => {
+    if (!id || typeof id !== 'string') {
+      setMissingRideId(true);
+      setLoading(false);
+      return;
+    }
+
     fetchRideDetails();
-    subscribeToLocationUpdates();
+    const unsubscribe = subscribeToLocationUpdates();
     
-    return () => {
-      // Cleanup subscriptions
-    };
+    return unsubscribe;
   }, [id]);
 
   const fetchRideDetails = async () => {
@@ -112,6 +122,10 @@ export default function LiveTrackingScreen() {
         }
       )
       .subscribe();
+
+    return () => {
+      subscription.unsubscribe();
+    };
   };
 
   const handleEmergencyCall = () => {
@@ -145,6 +159,20 @@ export default function LiveTrackingScreen() {
     );
   }
 
+  if (missingRideId) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.errorContainer}>
+          <Ionicons name="alert-circle" size={48} color="#EF4444" />
+          <Text style={styles.errorText}>Ride identifier is missing</Text>
+          <TouchableOpacity style={styles.actionButton} onPress={safeGoBack}>
+            <Text style={styles.actionButtonText}>Go Back</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   if (!ride) {
     return (
       <SafeAreaView style={styles.container}>
@@ -161,7 +189,7 @@ export default function LiveTrackingScreen() {
       <View style={styles.header}>
         <TouchableOpacity 
           style={styles.backButton} 
-          onPress={() => useRouter().back()}
+          onPress={safeGoBack}
         >
           <Ionicons name="arrow-back" size={24} color="#1A1A1A" />
         </TouchableOpacity>
