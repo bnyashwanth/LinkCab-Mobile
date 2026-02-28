@@ -29,14 +29,28 @@ export default function AppLayout() {
         sceneStyle: {
           backgroundColor: colors.background.primary,
         },
-        tabBarStyle: {
-          backgroundColor: '#FFFFFF',
-          borderTopColor: '#E9E9E0',
-          borderTopWidth: 1,
-          height: 68,
-          paddingTop: 6,
-          paddingBottom: 8,
-        },
+       tabBarStyle: {
+  position: 'absolute',
+  bottom: 16,
+
+  marginHorizontal: 20,   // 👈 THIS is the key fix
+
+  backgroundColor: '#FFFFFF',
+  borderTopColor: '#E9E9E0',
+  borderTopWidth: 1,
+
+  height: 64,
+  paddingTop: 6,
+  paddingBottom: 8,
+
+  borderRadius: 32,
+
+  elevation: 8,
+  shadowColor: '#000',
+  shadowOffset: { width: 0, height: 4 },
+  shadowOpacity: 0.12,
+  shadowRadius: 10,
+},
         tabBarItemStyle: {
           paddingVertical: 2,
           borderRadius: 12,

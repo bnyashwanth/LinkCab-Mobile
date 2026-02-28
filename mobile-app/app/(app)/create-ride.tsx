@@ -126,10 +126,12 @@ export default function CreateRideScreen() {
   const [locationSearch, setLocationSearch] = useState('');
 
   const totalFare = Number(totalFareInput || 0);
+  const totalPeople = availableSeats + 1; // co-passengers + creator
   const perPersonEstimate = useMemo(() => {
-    if (!totalFare || availableSeats <= 0) return 0;
-    return Math.round((totalFare / availableSeats) * 100) / 100;
-  }, [totalFare, availableSeats]);
+    if (!totalFare || totalPeople <= 0) return 0;
+    return Math.round((totalFare / totalPeople) * 100) / 100;
+  }, [totalFare, totalPeople]);
+  const formatInr = (amount: number) => `INR ${Number.isFinite(amount) ? amount.toFixed(2) : '0.00'}`;
 
   const formatDate = (date: Date) => {
     return date.toLocaleDateString('en-IN', {
@@ -420,7 +422,21 @@ export default function CreateRideScreen() {
             placeholder="Total cab fare (INR)"
             placeholderTextColor={BRAND.gray}
           />
-          <Text style={styles.helperText}>Estimated per-person: INR {perPersonEstimate.toFixed(2)}</Text>
+          <View style={styles.fareBreakdown}>
+            <View style={styles.fareRow}>
+              <Text style={styles.fareLabel}>Total Fare</Text>
+              <Text style={styles.fareValue}>{formatInr(totalFare)}</Text>
+            </View>
+            <View style={styles.fareRow}>
+              <Text style={styles.fareLabel}>Split Between</Text>
+              <Text style={styles.fareValue}>{totalPeople} people</Text>
+            </View>
+            <View style={[styles.fareRow, styles.fareRowHighlight]}>
+              <Text style={styles.fareHighlightLabel}>Per Person</Text>
+              <Text style={styles.fareHighlightValue}>{formatInr(perPersonEstimate)}</Text>
+            </View>
+          </View>
+          <Text style={styles.helperText}>Includes you + {availableSeats} co-passenger{availableSeats > 1 ? 's' : ''}.</Text>
         </View>
 
         <View style={styles.section}>
@@ -711,6 +727,47 @@ const styles = StyleSheet.create({
     borderColor: BRAND.grayMedium,
     color: BRAND.black,
     fontSize: 15,
+  },
+  fareBreakdown: {
+    marginTop: 10,
+    borderWidth: 1,
+    borderColor: BRAND.grayMedium,
+    borderRadius: 12,
+    backgroundColor: BRAND.white,
+    overflow: 'hidden',
+  },
+  fareRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: BRAND.grayLight,
+  },
+  fareRowHighlight: {
+    backgroundColor: BRAND.yellowLight,
+    borderBottomWidth: 0,
+  },
+  fareLabel: {
+    fontSize: 13,
+    color: BRAND.gray,
+    fontWeight: '600',
+  },
+  fareValue: {
+    fontSize: 13,
+    color: BRAND.black,
+    fontWeight: '700',
+  },
+  fareHighlightLabel: {
+    fontSize: 14,
+    color: BRAND.black,
+    fontWeight: '700',
+  },
+  fareHighlightValue: {
+    fontSize: 16,
+    color: BRAND.black,
+    fontWeight: '800',
   },
   helperText: { marginTop: 8, fontSize: 13, color: BRAND.gray },
   pillRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
