@@ -1,1 +1,37 @@
-{"name": "linkcab-monorepo", "version": "1.0.0", "description": "LinkCab - A comprehensive ride-sharing platform with admin portal and mobile app", "private": true, "workspaces": ["shared", "admin-portal", "mobile-app"], "scripts": {"dev:admin": "npm run dev --workspace=admin-portal", "dev:mobile": "npm run start --workspace=mobile-app", "build:admin": "npm run build --workspace=admin-portal", "build:mobile": "npm run build --workspace=mobile-app", "install:all": "npm install --workspaces", "clean": "npm run clean --workspaces && rm -rf node_modules", "lint": "npm run lint --workspaces", "test": "npm run test --workspaces", "setup:db": "cd admin-portal && npm run setup:db", "start:all": "concurrently \"npm run dev:admin\" \"npm run dev:mobile\""}, "devDependencies": {"@types/node": "^20.0.0", "concurrently": "^8.2.2", "husky": "^8.0.3", "lint-staged": "^13.2.3"}, "engines": {"node": ">=18.0.0", "npm": ">=9.0.0"}, "repository": {"type": "git", "url": "https://github.com/your-org/linkcab.git"}, "keywords": ["ride-sharing", "transportation", "mobile-app", "admin-portal", "react-native", "next.js", "typescript"], "author": "LinkCab Team", "license": "MIT", "lint-staged": {"*.{js,jsx,ts,tsx}": ["eslint --fix", "prettier --write"], "*.{json,md}": ["prettier --write"]}}
+{
+  "name": "linkcab-monorepo",
+  "version": "1.0.0",
+  "description": "LinkCab - A comprehensive ride-sharing platform with admin portal and mobile app",
+  "private": true,
+  "scripts": {
+    "dev:admin": "pnpm --filter linkcab-admin dev",
+    "dev:mobile": "pnpm --filter linkcabin-mobile start",
+    "build:admin": "pnpm --filter linkcab-admin build",
+    "build:mobile": "pnpm --filter linkcabin-mobile build",
+    "clean": "pnpm -r exec rm -rf node_modules && rm -rf node_modules",
+    "lint": "pnpm -r lint",
+    "test": "pnpm -r test",
+    "setup:db": "cd admin-portal && pnpm run setup:db",
+    "start:all": "concurrently \"pnpm run dev:admin\" \"pnpm run dev:mobile\""
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "concurrently": "^8.2.2",
+    "husky": "^8.0.3",
+    "lint-staged": "^13.2.3"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-org/linkcab.git"
+  },
+  "keywords": ["ride-sharing", "transportation", "mobile-app", "admin-portal", "react-native", "next.js", "typescript"],
+  "author": "LinkCab Team",
+  "license": "MIT",
+  "lint-staged": {
+    "*.{js,jsx,ts,tsx}": ["eslint --fix", "prettier --write"],
+    "*.{json,md}": ["prettier --write"]
+  }
+}
