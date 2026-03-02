@@ -1,0 +1,4 @@
+{
+  "installCommand": "npm install --install-links",
+  "buildCommand": "npm run build --workspace=admin-portal"
+}
