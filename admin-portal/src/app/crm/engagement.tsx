@@ -73,8 +73,8 @@ export default function EngagementManagement() {
   const [selectedCampaign, setSelectedCampaign] = useState<Campaign | null>(null);
   const [campaignForm, setCampaignForm] = useState({
     name: '',
-    type: 'push' as const,
-    target_audience: 'all' as const,
+    type: 'push' as Campaign['type'],
+    target_audience: 'all' as Campaign['target_audience'],
     message: '',
     wallet_amount: '',
     schedule_time: ''

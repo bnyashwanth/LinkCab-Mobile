@@ -95,7 +95,7 @@ export default function User360View() {
             ]);
 
             // Calculate trust score
-            const averageRating = ratings?.length > 0 
+            const averageRating = (ratings && ratings.length > 0)
               ? ratings.reduce((sum, r) => sum + r.rating, 0) / ratings.length 
               : 0;
 

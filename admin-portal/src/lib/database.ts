@@ -98,14 +98,16 @@ export class SafeDatabaseOperations {
         }
       }
 
-      const { data, error } = await withRetry(() => query);
+      const response = await withRetry(async () => await query);
+      const data = response.data;
+      const error = response.error;
       
       if (error) {
         console.error(`Select operation failed on table ${table}:`, error);
         return { data: null, error: error.message };
       }
       
-      return { data, error: null };
+      return { data: data as T[] | null, error: null };
     } catch (error) {
       console.error(`Unexpected error in select operation on table ${table}:`, error);
       return { data: null, error: error instanceof Error ? error.message : 'Unknown error' };
@@ -123,16 +125,18 @@ export class SafeDatabaseOperations {
         return { data: null, error: 'Service temporarily unavailable. Write operations disabled.' };
       }
 
-      const { data: result, error } = await withRetry(() => 
-        supabase.from(table).insert(data).select().single()
+      const response = await withRetry(async () => 
+        await supabase.from(table).insert(data).select().single()
       );
+      const result = response.data;
+      const error = response.error;
       
       if (error) {
         console.error(`Insert operation failed on table ${table}:`, error);
         return { data: null, error: error.message };
       }
       
-      return { data: result, error: null };
+      return { data: result as T | null, error: null };
     } catch (error) {
       console.error(`Unexpected error in insert operation on table ${table}:`, error);
       return { data: null, error: error instanceof Error ? error.message : 'Unknown error' };
@@ -159,14 +163,16 @@ export class SafeDatabaseOperations {
         });
       }
 
-      const { data: result, error } = await withRetry(() => query.select().single());
+      const response = await withRetry(async () => await query.select().single());
+      const result = response.data;
+      const error = response.error;
       
       if (error) {
         console.error(`Update operation failed on table ${table}:`, error);
         return { data: null, error: error.message };
       }
       
-      return { data: result, error: null };
+      return { data: result as T | null, error: null };
     } catch (error) {
       console.error(`Unexpected error in update operation on table ${table}:`, error);
       return { data: null, error: error instanceof Error ? error.message : 'Unknown error' };
@@ -192,7 +198,8 @@ export class SafeDatabaseOperations {
         });
       }
 
-      const { error } = await withRetry(() => query);
+      const response = await withRetry(async () => await query);
+      const error = response.error;
       
       if (error) {
         console.error(`Delete operation failed on table ${table}:`, error);

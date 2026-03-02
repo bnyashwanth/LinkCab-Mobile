@@ -47,12 +47,13 @@ export default function DropoffAnalytics() {
     const fetchAnalytics = async () => {
       try {
         // Calculate funnel stages
-        const [
-          { count: totalUsers, stage: 'signup', stage_name: 'Sign Up', users_at_stage: 0 },
-          { count: 0, stage: 'kyc_completion', stage_name: 'KYC Completion', users_at_stage: 0 },
-          { count: 0, stage: 'first_announcement', stage_name: 'First Announcement', users_at_stage: 0 },
-          { count: 0, stage: 'first_request', stage_name: 'First Request', users_at_stage: 0 },
-          { count: 0, stage: 'match_completed', stage_name: 'Match Completed', users_at_stage: 0 }
+        const totalUsers = 0;
+        const stages: FunnelStage[] = [
+          { stage: 'signup', stage_name: 'Sign Up', users_at_stage: totalUsers, conversion_rate: 0 },
+          { stage: 'kyc_completion', stage_name: 'KYC Completion', users_at_stage: 0, conversion_rate: 0 },
+          { stage: 'first_announcement', stage_name: 'First Announcement', users_at_stage: 0, conversion_rate: 0 },
+          { stage: 'first_request', stage_name: 'First Request', users_at_stage: 0, conversion_rate: 0 },
+          { stage: 'match_completed', stage_name: 'Match Completed', users_at_stage: 0, conversion_rate: 0 }
         ];
 
         // Calculate conversion rates
@@ -177,21 +178,21 @@ export default function DropoffAnalytics() {
         <CardContent>
           <div className="space-y-4">
             {funnelStages.map((stage, index) => (
-              <div key={stage.stage} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                <div>
-                  <div className="text-sm font-medium text-gray-700">{stage.stage_name}</div>
-                  <div className="text-xs text-gray-500">{stage.users_at_stage} users</div>
-                </div>
-                <div className="text-right">
-                  <div className={`text-2xl font-bold ${getConversionRateColor(stage.conversion_rate)}`}>
-                    {stage.conversion_rate.toFixed(1)}%
+              <div key={stage.stage}>
+                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                  <div>
+                    <div className="text-sm font-medium text-gray-700">{stage.stage_name}</div>
+                    <div className="text-xs text-gray-500">{stage.users_at_stage} users</div>
                   </div>
-                  <div className="text-xs text-gray-500">Conversion rate</div>
-                </div>
+                  <div className="text-right">
+                    <div className={`text-2xl font-bold ${getConversionRateColor(stage.conversion_rate)}`}>
+                      {stage.conversion_rate.toFixed(1)}%
+                    </div>
+                    <div className="text-xs text-gray-500">Conversion rate</div>
+                  </div>
                 </div>
                 {index < funnelStages.length - 1 && (
-                  <div className="w-8 h-8 flex items-center justify-center">
-                    <div className="w-0.5 h-px bg-gray-300"></div>
+                  <div className="w-8 h-8 flex items-center justify-center mx-auto my-1">
                     <TrendingDown className="h-4 w-4 text-gray-400" />
                   </div>
                 )}
@@ -222,8 +223,9 @@ export default function DropoffAnalytics() {
               </div>
             </div>
 
-            <div className="flex justify-between">
-              <span className="text-gray-600">KYC → First Announcement</span>
+            <div className="space-y-2">
+              <div className="flex justify-between">
+                <span className="text-gray-600">KYC → First Announcement</span>
                 <span className="font-medium">{metrics.kyc_to_first_announcement.toLocaleString()} users</span>
               </div>
               <div className="text-right text-green-600">
@@ -235,8 +237,9 @@ export default function DropoffAnalytics() {
               </div>
             </div>
 
-            <div className="flex justify-between">
-              <span className="text-gray-600">First Request → Match</span>
+            <div className="space-y-2">
+              <div className="flex justify-between">
+                <span className="text-gray-600">First Request → Match</span>
                 <span className="font-medium">{metrics.request_to_match.toLocaleString()} users</span>
               </div>
               <div className="text-right text-green-600">
@@ -248,8 +251,9 @@ export default function DropoffAnalytics() {
               </div>
             </div>
 
-            <div className="flex justify-between">
-              <span className="text-gray-600">Average Days to Match</span>
+            <div className="space-y-2">
+              <div className="flex justify-between">
+                <span className="text-gray-600">Average Days to Match</span>
                 <span className="font-medium">{metrics.avg_days_to_match.toFixed(1)} days</span>
               </div>
               <div className="text-right text-blue-600">
