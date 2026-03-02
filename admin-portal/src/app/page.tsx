@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import { getDashboardStats } from "./actions";
 import { ProtectedRoute } from "@/components/protected-route";
+import { AdminSidebar } from "@/components/admin-sidebar";
 
 interface DashboardStats {
   totalUsers: number;
@@ -33,6 +34,9 @@ interface DashboardStats {
   totalAnnouncements: number;
   totalRequests: number;
   totalRevenue: number;
+  todayRevenue: number;
+  monthlyRevenue: number;
+  successfulMatchesToday: number;
   activeDisputes: number;
   systemHealth: {
     databaseStatus: string;
@@ -68,6 +72,9 @@ export default function Dashboard() {
     totalAnnouncements: 0,
     totalRequests: 0,
     totalRevenue: 0,
+    todayRevenue: 0,
+    monthlyRevenue: 0,
+    successfulMatchesToday: 0,
     activeDisputes: 0,
     systemHealth: {
       databaseStatus: 'unknown',
@@ -130,166 +137,133 @@ export default function Dashboard() {
       description: "Total connection requests made",
     },
     {
-      title: "Platform Revenue",
-      value: `₹${stats.totalRevenue.toLocaleString()}`,
+      title: "Successful Matches Today",
+      value: stats.successfulMatchesToday,
+      icon: CheckCircle,
+      description: "Connections made today",
+    },
+    {
+      title: "Today's Revenue",
+      value: `₹${stats.todayRevenue.toLocaleString()}`,
       icon: Receipt,
-      description: "₹1 connection fees collected",
+      description: "₹1 connection fees collected today",
+    },
+    {
+      title: "Monthly Revenue",
+      value: `₹${stats.monthlyRevenue.toLocaleString()}`,
+      icon: Receipt,
+      description: "Total revenue this month",
     },
   ];
 
   if (loading) {
     return (
-      <div className="p-8">
+      <ProtectedRoute>
+        <div className="p-8">
         <div className="animate-pulse">
           <div className="h-8 bg-gray-200 rounded w-1/4 mb-8"></div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
             {[...Array(4)].map((_, i) => (
               <div key={i} className="h-32 bg-gray-200 rounded"></div>
             ))}
           </div>
+          <div className="h-96 bg-gray-200 rounded"></div>
         </div>
       </div>
+      </ProtectedRoute>
     );
   }
 
   return (
     <ProtectedRoute>
-      <div className="p-8">
-        <h1 className="text-3xl font-bold text-black mb-8">Dashboard</h1>
+      <div className="min-h-screen bg-gray-50">
+      <main className="flex-1 p-8">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-black mb-2">Dashboard</h1>
+          <p className="text-gray-600">Welcome back! Here's what's happening with LinkCab today.</p>
+        </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {statCards.map((stat) => (
-            <Card key={stat.title} className="border-gray-200 shadow-md">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-gray-700">
-                  {stat.title}
+          {/* Stats Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            {statCards.map((stat, index) => (
+              <div key={index} className="stat-card">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium text-gray-600">
+                    {stat.title}
+                  </CardTitle>
+                  <stat.icon className="h-4 w-4 text-yellow-500" />
+                </CardHeader>
+                <CardContent>
+                  <div className="stat-value">{stat.value}</div>
+                  <p className="stat-label">{stat.description}</p>
+                </CardContent>
+              </div>
+            ))}
+          </div>
+
+          {/* System Health & Recent Activity */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* System Health */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <Activity className="h-5 w-5 mr-2 text-yellow-500" />
+                  System Health
                 </CardTitle>
-                <stat.icon className="h-4 w-4 text-yellow-500" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-black">{stat.value}</div>
-                <p className="text-xs text-gray-500 mt-1">{stat.description}</p>
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Database Status</span>
+                    <Badge className="bg-green-100 text-green-800">Online</Badge>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">API Response Time</span>
+                    <span className="text-sm font-medium">{stats.systemHealth.apiResponseTime}ms</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Uptime</span>
+                    <span className="text-sm font-medium">{stats.systemHealth.uptime}%</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Error Rate</span>
+                    <span className="text-sm font-medium">{stats.systemHealth.errorRate}%</span>
+                  </div>
+                </div>
               </CardContent>
             </Card>
-          ))}
-        </div>
 
-        <div className="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* System Health */}
-          <Card className="border-gray-200 shadow-md">
-            <CardHeader>
-              <CardTitle className="text-black flex items-center">
-                <Server className="h-5 w-5 mr-2 text-green-500" />
-                System Health
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="flex items-center space-x-2">
-                  <Database className="h-4 w-4 text-green-500" />
-                  <span className="text-sm text-gray-700">Database</span>
-                  <Badge variant="secondary" className="bg-green-100 text-green-800">
-                    {stats.systemHealth.databaseStatus}
-                  </Badge>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Activity className="h-4 w-4 text-blue-500" />
-                  <span className="text-sm text-gray-700">API</span>
-                  <span className="text-sm font-medium text-black">{stats.systemHealth.apiResponseTime}ms</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Clock className="h-4 w-4 text-green-500" />
-                  <span className="text-sm text-gray-700">Uptime</span>
-                  <span className="text-sm font-medium text-black">{stats.systemHealth.uptime}%</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <AlertTriangle className="h-4 w-4 text-yellow-500" />
-                  <span className="text-sm text-gray-700">Error Rate</span>
-                  <span className="text-sm font-medium text-black">{stats.systemHealth.errorRate}%</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <HardDrive className="h-4 w-4 text-blue-500" />
-                  <span className="text-sm text-gray-700">Storage</span>
-                  <span className="text-sm font-medium text-black">{stats.systemHealth.storageUsed}%</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Cpu className="h-4 w-4 text-orange-500" />
-                  <span className="text-sm text-gray-700">CPU</span>
-                  <span className="text-sm font-medium text-black">{stats.systemHealth.cpuUsage}%</span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Security Alerts */}
-          <Card className="border-gray-200 shadow-md">
-            <CardHeader>
-              <CardTitle className="text-black flex items-center">
-                <Shield className="h-5 w-5 mr-2 text-red-500" />
-                Security Alerts
-                <Badge variant="secondary" className="ml-2 bg-red-100 text-red-800">
-                  {stats.securityAlerts.length}
-                </Badge>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {stats.securityAlerts.slice(0, 3).map((alert) => (
-                  <div key={alert.id} className="flex items-start space-x-3 p-3 bg-gray-50 rounded-lg">
-                    {alert.type === 'error' && <XCircle className="h-4 w-4 text-red-500 mt-0.5" />}
-                    {alert.type === 'warning' && <AlertTriangle className="h-4 w-4 text-yellow-500 mt-0.5" />}
-                    {alert.type === 'info' && <Info className="h-4 w-4 text-blue-500 mt-0.5" />}
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-black">{alert.title}</p>
-                      <p className="text-xs text-gray-600 mt-1">{alert.message}</p>
-                      <p className="text-xs text-gray-500 mt-1">
-                        {new Date(alert.timestamp).toLocaleString()}
-                      </p>
-                    </div>
-                    <Badge
-                      variant="secondary"
-                      className={`${alert.severity === 'high' ? 'bg-red-100 text-red-800' :
-                          alert.severity === 'medium' ? 'bg-yellow-100 text-yellow-800' :
-                            'bg-blue-100 text-blue-800'
-                        }`}
-                    >
-                      {alert.severity}
-                    </Badge>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Recent Activities */}
-        <div className="mt-8">
-          <Card className="border-gray-200 shadow-md">
-            <CardHeader>
-              <CardTitle className="text-black">Recent Activities</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {stats.recentActivities.map((activity) => (
-                  <div key={activity.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <div className="flex items-center space-x-3">
-                      {activity.type === 'kyc' && <UserCheck className="h-4 w-4 text-green-500" />}
-                      {activity.type === 'system' && <Server className="h-4 w-4 text-blue-500" />}
-                      {activity.type === 'config' && <AlertCircle className="h-4 w-4 text-yellow-500" />}
-                      <div>
-                        <p className="text-sm font-medium text-black">{activity.action}</p>
-                        <p className="text-xs text-gray-600">by {activity.user}</p>
+            {/* Recent Activity */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <Clock className="h-5 w-5 mr-2 text-yellow-500" />
+                  Recent Activity
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {stats.recentActivities.length === 0 ? (
+                    <p className="text-gray-500 text-sm">No recent activity</p>
+                  ) : (
+                    stats.recentActivities.map((activity) => (
+                      <div key={activity.id} className="flex items-center space-x-3 text-sm">
+                        <div className="w-2 h-2 bg-yellow-400 rounded-full"></div>
+                        <div>
+                          <p className="font-medium text-black">{activity.user}</p>
+                          <p className="text-gray-500">{activity.action}</p>
+                        </div>
+                        <span className="text-gray-400 text-xs ml-auto">
+                          {new Date(activity.timestamp).toLocaleTimeString()}
+                        </span>
                       </div>
-                    </div>
-                    <span className="text-xs text-gray-500">
-                      {new Date(activity.timestamp).toLocaleString()}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+                    ))
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </main>
       </div>
     </ProtectedRoute>
   );

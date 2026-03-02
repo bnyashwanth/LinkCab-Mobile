@@ -69,7 +69,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const fetchProfile = async (userId: string) => {
     try {
       const { data, error } = await supabase
-        .from('profiles')
+        .from('users')
         .select('*')
         .eq('id', userId)
         .single();
@@ -80,7 +80,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           console.warn('No profile found for user, creating blank record:', userId);
           try {
             const { data: newProfile, error: insertErr } = await supabase
-              .from('profiles')
+              .from('users')
               .insert({ id: userId })
               .select()
               .single();
@@ -108,6 +108,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const mappedProfile = {
         ...data,
         phone_number: data.phone, // Map phone to phone_number for app usage
+        verification_status: data.kyc_status, // Map kyc_status to verification_status
+        verification_documents: data.kyc_documents, // Map documents JSON
       };
 
       setProfile(mappedProfile);
@@ -163,7 +165,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const signInWithOAuth = async (provider: 'google' | 'facebook') => {
     try {
       console.log(`Starting ${provider} OAuth sign in...`);
-      
+
       let redirectUri = AuthSession.makeRedirectUri({
         scheme: 'linkcab',
         preferLocalhost: false,
@@ -194,7 +196,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       if (res.type === 'success' && res.url) {
         console.log(`${provider} OAuth successful, processing callback...`);
-        
+
         // Let Supabase handle the session automatically from the URL
         // The deep linking will trigger the auth callback which will handle the session
         console.log(`${provider} OAuth completed, waiting for session...`);
@@ -236,15 +238,33 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       };
 
       // Map phone_number to phone for database compatibility
-      if (updates.phone_number) {
+      if ('phone_number' in updates) {
         dbUpdates.phone = updates.phone_number;
         delete dbUpdates.phone_number;
       }
+      
+      // Map Verification fields to KYC fields
+      if ('verification_status' in updates) {
+        dbUpdates.kyc_status = updates.verification_status;
+        delete dbUpdates.verification_status;
+      }
+      if ('verification_documents' in updates) {
+        dbUpdates.kyc_documents = updates.verification_documents;
+        delete dbUpdates.verification_documents;
+      }
+
+      // Also handle phone field directly
+      if ('phone' in updates) {
+        dbUpdates.phone = updates.phone;
+      }
+
+      console.log('Updating profile with data:', dbUpdates);
 
       const { error } = await supabase
-        .from('profiles')
+        .from('users')
         .upsert({
           id: user.id,
+          email: user.email,
           ...dbUpdates,
         }, {
           onConflict: 'id'
@@ -256,6 +276,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         return { error };
       }
 
+      // Refetch profile to get updated data
       await fetchProfile(user.id);
       return { error: null };
     } catch (error) {

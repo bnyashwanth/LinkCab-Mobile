@@ -1,4 +1,6 @@
 export const colors = {
+  white: '#FFFFFF',
+  black: '#000000',
   // LinkCab Brand Colors
   brand: {
     primary: '#000000',    // Black (for accents)

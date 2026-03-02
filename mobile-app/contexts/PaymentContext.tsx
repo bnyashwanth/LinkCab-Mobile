@@ -92,13 +92,18 @@ export const PaymentProvider: React.FC<PaymentProviderProps> = ({ children }) =>
       // Convert ride ID to valid UUID or null
       const validRideId = getValidRideId(rideId);
 
+      // Map Frontend types to DB accepted types ('payment', 'refund', 'wallet_credit')
+      let dbType = 'payment';
+      if (type === 'top_up') dbType = 'wallet_credit';
+      if (type === 'refund') dbType = 'refund';
+
       const { data, error } = await supabase
         .from('transactions')
         .insert({
           user_id: user.id,
-          type,
+          type: dbType,
           amount,
-          ride_id: validRideId, // Use validated ride ID
+          match_id: validRideId, // map ride_id to match_id
           description,
           status: 'completed',
         })
@@ -125,7 +130,7 @@ export const PaymentProvider: React.FC<PaymentProviderProps> = ({ children }) =>
         .from('wallets')
         .update({
           balance: newBalance,
-          updated_at: new Date().toISOString(),
+          last_updated: new Date().toISOString(),
         })
         .eq('id', wallet.id)
         .select()

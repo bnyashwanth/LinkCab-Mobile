@@ -86,12 +86,14 @@ export default function WalletScreen() {
   const getTransactionIcon = (type: string) => {
     switch (type) {
       case 'top_up':
+      case 'wallet_credit':
         return 'add-circle-outline';
       case 'request_fee':
         return 'remove-circle-outline';
       case 'refund':
         return 'refresh-circle-outline';
       case 'ride_payment':
+      case 'payment':
         return 'car-outline';
       default:
         return 'receipt-outline';

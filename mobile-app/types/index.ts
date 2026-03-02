@@ -128,7 +128,7 @@ export interface RideContextType {
   deleteAllRides: () => Promise<{ error: any }>;
 }
 
-export type TransactionType = 'request_fee' | 'refund' | 'top_up' | 'ride_payment';
+export type TransactionType = 'request_fee' | 'refund' | 'top_up' | 'ride_payment' | 'wallet_credit' | 'payment';
 
 export interface Wallet {
   id: string;
@@ -155,7 +155,7 @@ export interface Transaction {
   user_id: string;
   type: TransactionType;
   amount: number;
-  ride_id?: string;
+  match_id?: string;
   description?: string;
   status: 'pending' | 'completed' | 'failed';
   created_at: string;

@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabase";
 
 interface AdminSession {
   email: string;
@@ -10,6 +11,7 @@ interface AdminSession {
 
 interface AuthContextType {
   session: AdminSession | null;
+  login: (sessionData: AdminSession) => void;
   logout: () => void;
   isAuthenticated: boolean;
 }
@@ -59,7 +61,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const logout = () => {
+  const login = (sessionData: AdminSession) => {
+    setSession(sessionData);
+    setIsAuthenticated(true);
+  };
+
+  const logout = async () => {
+    // Sign out from Supabase
+    await supabase.auth.signOut();
+    
+    // Clear local session
     deleteCookie("admin_session");
     setSession(null);
     setIsAuthenticated(false);
@@ -67,7 +78,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ session, logout, isAuthenticated }}>
+    <AuthContext.Provider value={{ session, login, logout, isAuthenticated }}>
       {children}
     </AuthContext.Provider>
   );

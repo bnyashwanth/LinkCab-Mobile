@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -33,8 +33,15 @@ export default function EditProfileScreen() {
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState<FormData>({
     full_name: profile?.full_name || '',
-    phone: profile?.phone || '',
+    phone: profile?.phone || profile?.phone_number || '',
   });
+
+  useEffect(() => {
+    setFormData({
+      full_name: profile?.full_name || '',
+      phone: profile?.phone || profile?.phone_number || '',
+    });
+  }, [profile]);
 
   const handleBack = () => {
     router.push('/(app)/profile');
@@ -165,7 +172,7 @@ export default function EditProfileScreen() {
       setLoading(true);
       const { error } = await updateProfile({
         full_name: formData.full_name.trim(),
-        phone: formData.phone.trim() || null,
+        phone_number: formData.phone.trim() || null,
       });
 
       if (error) {

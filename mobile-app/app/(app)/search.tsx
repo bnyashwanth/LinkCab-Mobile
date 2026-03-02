@@ -59,7 +59,6 @@ export default function SearchScreen() {
     // Apply date filter
     if (filters.dateRange !== 'all') {
       const now = new Date();
-      const rideDate = new Date(ride.ride_date || '');
 
       switch (filters.dateRange) {
         case 'today':

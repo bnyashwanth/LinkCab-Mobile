@@ -102,7 +102,7 @@ function FooterNav({ insets }: { insets: { bottom: number } }) {
   const activeKey = items.find((it) => pathname.includes(it.key))?.key || 'home';
 
   return (
-    <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 20) }]}>
+    <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 12), paddingTop: 12 }]}>
       {items.map((it) => {
         const isActive = it.key === activeKey;
         return (
@@ -119,13 +119,12 @@ function FooterNav({ insets }: { insets: { bottom: number } }) {
 const styles = StyleSheet.create({
   footer: {
     position: 'absolute',
-    left: 0,
+    left: 2,
     right: 0,
-    bottom: 0,
-    height: 72,
+    bottom: -2,
     backgroundColor: colors.background.primary,
-    borderTopWidth: 1,
-    borderTopColor: 'transparent',
+    borderTopWidth: 2,
+    borderTopColor: colors.brand.primary,
     flexDirection: 'row',
     justifyContent: 'space-around',
     alignItems: 'center',
@@ -137,8 +136,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   footerLabel: {
-    fontSize: 10,
+    fontSize: 12,
     color: colors.text.primary,
-    marginTop: 2,
+    marginTop: 3,
   },
 });
